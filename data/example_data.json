@@ -1,0 +1,18 @@
+﻿[
+    {
+        "name": "Event 1",
+        "start": "2023-12-01T10:00:00",
+        "end": "2023-12-01T12:00:00",
+        "location": "Stadium A",
+        "sport": "futsal",
+        "teams": ["Team A", "Team B"]
+    },
+    {
+        "name": "Event 2",
+        "start": "2023-12-02T14:00:00",
+        "end": "2023-12-02T16:00:00",
+        "location": "Arena B",
+        "sport": "basketball",
+        "teams": ["Team C", "Team D"]
+    }
+]

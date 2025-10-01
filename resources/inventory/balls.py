@@ -1,0 +1,9 @@
+﻿from .item import Item
+class Ball(Item):
+    def __init__(self, name, sport):
+        super().__init__(name)
+        self.sport = sport
+        
+
+    def __str__(self):
+        return f"{self.sport.capitalize()} Ball (Quantity: {self.total_quantity})"
