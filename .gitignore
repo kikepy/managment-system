@@ -1,0 +1,19 @@
+﻿# Ignorar archivos temporales del sistema
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ignorar entornos virtuales
+venv/
+.env/
+
+# Ignorar configuraciones de IDE
+.idea/
+.vscode/
+*.iml
+
+# Ignorar dependencias instaladas
+__pycache__/
+*.pyc
