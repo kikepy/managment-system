@@ -1,4 +1,5 @@
-# Standard library modules (usually do not need to be listed)
+# Standard library modules
 json
 tkinter
 date
+tkcalendar

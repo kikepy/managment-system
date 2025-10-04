@@ -1,6 +1,4 @@
-﻿# File: events/scheduling.py
-
-import os
+﻿import os
 import json
 from datetime import datetime
 
@@ -13,14 +11,20 @@ def save_schedule_to_file(schedule):
 
 def load_schedule_from_file():
     try:
-        with open(SCHEDULE_FILE, "r") as file:
-            schedule = json.load(file)
-            for event in schedule:
-                try:
-                    event["start"] = datetime.fromisoformat(event["start"])
-                    event["end"] = datetime.fromisoformat(event["end"])
-                except ValueError:
-                    raise ValueError(f"Invalid date format in event: {event}")
-            return schedule
+        if os.path.exists(SCHEDULE_FILE) and os.path.getsize(SCHEDULE_FILE) > 0:
+            with open(SCHEDULE_FILE, "r") as file:
+                schedule = json.load(file)
+                for event in schedule:
+                    try:
+                        event["start"] = datetime.fromisoformat(event["start"])
+                        event["end"] = datetime.fromisoformat(event["end"])
+                    except ValueError:
+                        raise ValueError(f"Invalid date format in event: {event}")
+                return schedule
+        else:
+            # Return an empty list if the file does not exist or is empty
+            return []
     except FileNotFoundError:
         return []
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Error decoding JSON: {e}")
