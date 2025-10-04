@@ -1,49 +1,52 @@
-﻿from resources.inventory import Inventory, Ball, Net, SellerProduct, MaintenanceItem
+﻿# File: tests/test_inventory.py
+import unittest
+from resources.inventory.inventory import Inventory
+from resources.inventory.item import Item
+from resources.inventory.balls import Ball
 
-def test_inventory_with_various_items():
-    inventory = Inventory()
+class TestInventory(unittest.TestCase):
+    def setUp(self):
+        self.inventory = Inventory()
+        self.item1 = Item("microphone", 10)
+        self.item2 = Item("Snacks", 50)
+        self.ball1 = Ball("football", "soccer", 5)
+        self.ball2 = Ball("basketball", "basketball", 3)
 
-    # Create items
-    volleyball = Ball("volleyball")
-    futsal = Ball("futsal")
-    basketball = Ball("basket")
-    net = Net("volleyball net")
-    product = SellerProduct("water bottle", 5.0)
-    maintenance_item = MaintenanceItem("paint", "field marking")
+    def test_add_item(self):
+        self.inventory.add_item(self.item1, 5)
+        self.assertEqual(self.item1.total_quantity, 15)
+        self.assertIn(self.item1, self.inventory.items)
 
-    # Add items to the inventory
-    inventory.add_item(volleyball, 3)
-    inventory.add_item(futsal, 5)
-    inventory.add_item(basketball, 2)
-    inventory.add_item(net, 1)
-    inventory.add_item(product, 10)
-    inventory.add_item(maintenance_item, 4)
+    def test_remove_item(self):
+        self.inventory.add_item(self.item1, 5)
+        self.inventory.remove_item(self.item1, 5)
+        self.assertEqual(self.item1.total_quantity, 10)
+        self.inventory.remove_item(self.item1, 10)
+        self.assertNotIn(self.item1, self.inventory.items)
 
-    # List all items in the inventory
-    print("Items in inventory:")
-    for item in inventory.list_items():
-        print(item)
+    def test_remove_item_insufficient_quantity(self):
+        self.inventory.add_item(self.item1, 5)
+        with self.assertRaises(ValueError):
+            self.inventory.remove_item(self.item1, 20)
 
-    # Count balls by sport
-    ball_counts = inventory.count_balls_by_sport()
-    print("\nBall counts by sport:")
-    for sport, count in ball_counts.items():
-        print(f"{sport.capitalize()}: {count}")
+    def test_list_items(self):
+        self.inventory.add_item(self.item1, 5)
+        self.inventory.add_item(self.item2, 10)
+        items_list = self.inventory.list_items()
+        self.assertIn("microphone: 15", items_list)
+        self.assertIn("Snacks: 60", items_list)
 
-    # Find specific items by name
-    print("\nFind items by name:")
-    for name in ["volleyball", "water bottle", "paint"]:
-        found_items = inventory.find_item_by_name(name)
-        print(f"Items with name '{name}': {found_items}")
+    def test_count_balls_by_sport(self):
+        self.inventory.add_item(self.ball1, 5)
+        self.inventory.add_item(self.ball2, 3)
+        ball_counts = self.inventory.count_balls_by_sport()
+        self.assertEqual(ball_counts["soccer"], 10)
+        self.assertEqual(ball_counts["basketball"], 6)
 
-    # Remove some items
-    inventory.remove_item(volleyball, 1)
-    inventory.remove_item(product, 5)
-
-    # Verify inventory after removal
-    print("\nItems after removal:")
-    for item in inventory.list_items():
-        print(item)
+    def test_find_item_by_name(self):
+        self.inventory.add_item(self.item1, 5)
+        found_items = self.inventory.find_item_by_name("microphone")
+        self.assertIn(self.item1, found_items)
 
 if __name__ == "__main__":
-    test_inventory_with_various_items()
+    unittest.main()

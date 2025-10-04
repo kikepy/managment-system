@@ -1,10 +1,9 @@
-﻿from resources import Inventory, Commentator, Seller, check_dependencies
-
+﻿from resources import *
 def test_check_dependencies():
     # Crear inventario
     inventory = Inventory()
-    inventory.add_item("microphone", 2)
-    inventory.add_item("Products", 10)
+    inventory.add_item(Item("microphone", 0), 2)  # Pass item and quantity separately
+    inventory.add_item(Item("Snacks", 0), 50)    # Pass item and quantity separately
 
     # Crear staff
     staff_list = [
@@ -17,7 +16,3 @@ def test_check_dependencies():
         print("All dependencies are met. The event can proceed.")
     else:
         print("Dependencies are missing. The event cannot proceed.")
-
-# Ejecutar prueba
-if __name__ == "__main__":
-    test_check_dependencies()

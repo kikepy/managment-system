@@ -4,7 +4,7 @@ class Inventory:
     def __init__(self):
         self.items = []
 
-    def add_item(self, item, quantity=1):
+    def add_item(self, item, quantity):
         item.total_quantity += quantity
         self.items.append(item)
 
