@@ -1,6 +1,6 @@
 ﻿from .item import Item
 
 class Whistle(Item):
-    def __init__(self, quantity = 0):
-        super().__init__("Whistle")
-        self.total_quantity = quantity
+    def __init__(self, total_quantity=0):
+        super().__init__("Whistle", total_quantity=0)
+        self.total_quantity = total_quantity

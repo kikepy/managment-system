@@ -23,4 +23,4 @@ class Commentator(Staff):
 
     def __repr__(self):
         status = "Available" if self.availability else "Unavailable"
-        return f"Name: {self.name} Role: {self.role}, Languages: {', '.join(self.languages)}, Experience: {self.experience_years} years, {status}"
+        return f"{self.role}, Languages: {', '.join(self.languages)}, Experience: {self.experience_years} years, {status}"

@@ -1,6 +1,4 @@
-﻿#Main Class for the staff of the stadium
-
-class Staff:
+﻿class Staff:
     def __init__(self, name, role, availability=True):
         self.name = name
         self.role = role

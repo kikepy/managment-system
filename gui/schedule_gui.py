@@ -25,11 +25,6 @@ class ScheduleGUI:
         # Button to select a date
         tk.Button(root, text="Check Availability", command=self.check_availability).pack(pady=10)
 
-        # Dropdown for available slots
-        self.slot_var = tk.StringVar(value="Select a time slot")
-        self.slot_menu = tk.OptionMenu(root, self.slot_var, [])
-        self.slot_menu.pack(pady=10)
-
         # Button to confirm event creation
         tk.Button(root, text="Create Event", command=self.create_event).pack(pady=10)
     def highlight_busy_days(self):

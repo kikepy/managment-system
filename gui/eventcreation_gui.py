@@ -57,6 +57,8 @@ class EventCreationGUI:
             tk.Label(self.dynamic_frame, text="Referee Level:").pack(pady=5)
             self.referee_entry = tk.Entry(self.dynamic_frame)
             self.referee_entry.pack(pady=5)
+            self.sport_entry = tk.Entry(self.dynamic_frame)
+            self.sport_entry.pack(pady=5)
 
             tk.Label(self.dynamic_frame, text="Commentators (comma-separated):").pack(pady=5)
             self.commentators_entry = tk.Entry(self.dynamic_frame)
@@ -81,6 +83,7 @@ class EventCreationGUI:
         name = self.name_entry.get()
         location = self.location_var.get()
         commentators = self.commentators_entry.get()
+        sport = self.sport_entry.get()
 
 
         try:
