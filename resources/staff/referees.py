@@ -47,4 +47,4 @@ class Referee(Staff):
     def __repr__(self):
         status = "Available" if self.availability else "Unavailable"
         assistants = ", ".join(self.assistants) if self.assistants else "None"
-        return f"Name: {self.name} Role: {self.role} Sport: {self.sport}, {self.certification_level}, Assistants {assistants} ,{status}"
+        return f"{self.role}: {self.name}  Sport: {self.sport}, {self.certification_level} ,{status}"

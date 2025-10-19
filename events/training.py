@@ -1,8 +1,27 @@
 ﻿from .event import Event
-from .validation import validate_training
+from datetime import datetime
+from .event import Event
+class Training(Event):
+    def __init__(self, name, date, location, sport, duration):
+        super().__init__(name, date, location, sport, event_type="training")
+        self.duration = duration
 
-class TrainingSession(Event):
-    def __init__(self, name, date, location, sport, trainer):
-        validate_training(date=date, coach=trainer)  # Update the argument passed to validation
-        super().__init__(name, date, location, sport)
-        self.trainer = trainer  # Update the attribute name
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "date": self.date.isoformat(),
+            "location": self.location,
+            "sport": self.sport,
+            "event_type": self.event_type,
+            "duration": self.duration,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data["name"],
+            date=datetime.fromisoformat(data["date"]),
+            location=data["location"],
+            sport=data["sport"],
+            duration=data["duration"],
+        )

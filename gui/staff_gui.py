@@ -1,4 +1,5 @@
-﻿import tkinter as tk
+﻿import random
+import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import time
@@ -12,6 +13,15 @@ class StaffGUI:
         self.staff = []
         self.input_fields = {}
         self.current_row = 2
+
+        self.staff_names = {
+            "Referee": ["John", "Michael", "Sarah", "Emily", "Daniel", "Jessica", "Mark", "Emma"],
+            "Trainer": ["Chris", "Anna", "James", "Sophia", "Luis", "Elier", "Marta", "Henry"],
+            "Commentator": ["David", "Laura", "Robert", "Olivia", "Mario Kempes", "DjMario", "Messi"],
+            "Doctor": ["Dr. Smith", "Dr. Brown", "Dr. Taylor", "Dr. Wilson", "Dr. Garcia", "Dr. Martinez", "Dr. Lee", "Dr. Hernandez"],
+            "Maintenance": ["Tom", "Jerry", "Sam", "Alex", "Oscar", "Jian", "Ernesto", "Miguel"],
+            "Seller": ["Alice", "Bob", "Charlie", "Diana", "Yasmani", "Yusimi", "Yamila", "Kevin"]
+        }
 
         # Load existing staff from JSON
         self.load_staff()
@@ -70,26 +80,26 @@ class StaffGUI:
         if role == "Referee":
             # Sport field
             tk.Label(self.form_frame, text="Sport:").grid(row=current_row, column=0, padx=5, pady=5)
-            self.input_fields["sport"] = tk.StringVar(value="futsal")
+            self.input_fields["sport"] = tk.StringVar(value="Futsal")
             sport_menu = ttk.Combobox(self.form_frame, textvariable=self.input_fields["sport"],
-                                      values=["futsal", "basketball", "volleyball"], state="readonly")
+                                      values=["Futsal", "Basketball", "Volleyball"], state="readonly")
             sport_menu.grid(row=current_row, column=1, padx=5, pady=5)
             current_row += 1
 
             # Certification level field
             tk.Label(self.form_frame, text="Certification:").grid(row=current_row, column=0, padx=5, pady=5)
-            self.input_fields["certification_level"] = tk.StringVar(value="low")
+            self.input_fields["certification_level"] = tk.StringVar(value="Low")
             cert_menu = ttk.Combobox(self.form_frame, textvariable=self.input_fields["certification_level"],
-                                     values=["low", "mid", "high"], state="readonly")
+                                     values=["Low", "Mid", "High"], state="readonly")
             cert_menu.grid(row=current_row, column=1, padx=5, pady=5)
             current_row += 1
 
         elif role == "Trainer":
             # Sport field for Trainer
             tk.Label(self.form_frame, text="Sport:").grid(row=current_row, column=0, padx=5, pady=5)
-            self.input_fields["sport"] = tk.StringVar(value="futsal")
+            self.input_fields["sport"] = tk.StringVar(value="Futsal")
             sport_menu = ttk.Combobox(self.form_frame, textvariable=self.input_fields["sport"],
-                                      values=["futsal", "basketball", "volleyball"], state="readonly")
+                                      values=["Futsal", "Basketball", "Volleyball"], state="readonly")
             sport_menu.grid(row=current_row, column=1, padx=5, pady=5)
             current_row += 1
 
@@ -181,20 +191,19 @@ class StaffGUI:
         try:
             for i in range(quantity):
                 # Generate a default name based on role and timestamp
-                timestamp = int(time.time() * 1000)
-                default_name = f"{role}_{timestamp + i}"
+                name = random.choice(self.staff_names.get(role, ["StaffMember"]))
 
                 # Create an instance of the specific staff class based on the role
                 if role == "Referee":
                     new_staff = Referee(
-                        name=default_name,
+                        name=name,
                         sport=self.input_fields["sport"].get(),
                         certification_level=self.input_fields["certification_level"].get(),
                         availability=availability
                     )
                 elif role == "Trainer":
                     new_staff = Trainer(
-                        name=default_name,
+                        name=name,
                         sport=self.input_fields["sport"].get(),
                         availability=availability
                     )
@@ -202,14 +211,14 @@ class StaffGUI:
                     languages = [lang.strip() for lang in self.input_fields["languages"].get().split(",")]
                     experience_years = int(self.input_fields["experience_years"].get())
                     new_staff = Commentator(
-                        name=default_name,
+                        name=name,
                         languages=languages,
                         experience_years=experience_years,
                         aviability=availability  # Note: typo in original class
                     )
                 elif role == "Doctor":
                     new_staff = Doctor(
-                        name=default_name,
+                        name=name,
                         specialization=self.input_fields["specialization"].get(),
                         certification=self.input_fields["certification"].get(),
                         availability=availability
@@ -219,7 +228,7 @@ class StaffGUI:
                     shift = self.input_fields["shift"].get()
                     tools = [tool.strip() for tool in self.input_fields["tools"].get().split(",")]
                     new_staff = Maintenance(
-                        name=default_name,
+                        name=name,
                         skills=skills,
                         shift=shift,
                         availability=availability,
@@ -229,7 +238,7 @@ class StaffGUI:
                     sales_experience = int(self.input_fields["sales_experience"].get())
                     products = [p.strip() for p in self.input_fields["products"].get().split(",")]
                     new_staff = Seller(
-                        name=default_name,
+                        name=name,
                         sales_experience=sales_experience,
                         products=products,
                         availability=availability

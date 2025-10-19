@@ -1,24 +1,16 @@
 ﻿from datetime import datetime
-from events.scheduling import load_schedule_from_file
+from .scheduling import load_schedule_from_file
 
-def validate_no_overlap(new_event):
-    # Load existing events from the JSON file
-    existing_events = load_schedule_from_file()
 
-    new_start = new_event["start"]
-    new_end = new_event["end"]
-    new_location = new_event["location"]
-
-    for existing_event in existing_events:
-        existing_start = existing_event["start"]
-        existing_end = existing_event["end"]
-        existing_location = existing_event["location"]
-
-        # Check for time overlap in the same location
-        if new_location == existing_location and new_start < existing_end and new_end > existing_start:
-            raise ValueError(
-                f"Event '{new_event['name']}' overlaps with '{existing_event['name']}' in the same stadium."
-            )
+def validate_no_overlap(new_event, existing_events):
+    for event in existing_events:
+        # Check for overlap only if the locations are the same
+        if event.location == new_event.location:
+            if not (new_event.end <= event.start or new_event.start >= event.end):
+                raise ValueError(
+                    f"Overlap detected with event '{event.name}' at {event.location} "
+                    f"from {event.start} to {event.end}."
+                )
 
 def validate_date(event_date):
     try:

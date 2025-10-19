@@ -2,6 +2,7 @@
 #The duration will be displayed in min
 from datetime import timedelta
 from resources.dependency_checker import check_dependencies
+from datetime import datetime
 
 class Event:
     match_durations = {
@@ -72,6 +73,28 @@ class Event:
         ]
         if not check_dependencies(staff_list, inventory):
             raise ValueError("Staff dependencies validation failed.")
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "start": self.start.isoformat(),
+            "location": self.location,  # Ensure this is the stadium name
+            "sport": self.sport,
+            "event_type": self.event_type,
+            "end": self.end.isoformat(),
+            "required_items": self.required_items.get(self.sport.lower(), {}),  # Populate required items
+            "required_staff": self.required_staff.get(self.event_type, {}),
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data["name"],
+            start=datetime.fromisoformat(data["start"]),
+            location=data["location"],
+            sport=data["sport"],
+            event_type=data["event_type"],
+        )
 
     def __repr__(self):
         return (

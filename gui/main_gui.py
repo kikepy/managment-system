@@ -1,4 +1,7 @@
 ﻿import tkinter as tk
+
+from select import select
+
 from gui.item_gui import ItemGUI
 from gui.staff_gui import StaffGUI
 from gui.schedule_gui import ScheduleGUI

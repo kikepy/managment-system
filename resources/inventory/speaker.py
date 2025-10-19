@@ -7,4 +7,4 @@ class Speaker(Item):
         self.total_quantity = total_quantity
 
     def __repr__(self):
-        return f"{self.name} (Broken: {self.is_broken}, Quantity: {self.total_quantity})"
+        return f"{self.name}: {self.total_quantity})"

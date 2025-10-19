@@ -1,7 +1,7 @@
 ﻿from .event import Event
 from .validation import validate_tournament
 import math
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 class Tournament(Event):
     def __init__(self, name, date, location, sport, teams, format, specific_days=None, schedule_format="consecutive"):
@@ -60,3 +60,22 @@ class Tournament(Event):
 
         print(f"Generated schedule: {schedule}")  # Debugging
         return schedule
+
+    def to_dict(self):
+        base_dict = super().to_dict()  # Get the base event details
+        base_dict.update({
+            "teams": self.teams,
+            "format": self.format,
+            "schedule_format": self.schedule_format,
+            "schedule": [date.isoformat() for date in self.schedule],  # Include the schedule
+        })
+        return base_dict
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data["name"],
+            date=datetime.fromisoformat(data["date"]),
+            location=data["location"],
+            sport=data["sport"],
+            teams=data["teams"],
+        )
