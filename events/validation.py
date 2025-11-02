@@ -1,6 +1,5 @@
 ﻿from datetime import datetime
-from .scheduling import load_schedule_from_file
-
+from resources import *
 
 def validate_no_overlap(new_event, existing_events):
     for event in existing_events:
@@ -57,3 +56,28 @@ def validate_tournament(teams, format, date):
 def validate_training():
     # Placeholder for training session validation logic
     pass
+
+
+def validate_items(required_items, available_items):
+    print("Validate items")
+    for item, quantity in required_items.items():
+        available_quantity = available_items.get(item, 0)  # Defaults to 0 if the item is missing
+        print(f"Checking item: {item}, Required: {quantity}, Available: {available_quantity}")
+        if available_quantity < quantity:
+            raise ValueError(
+                f"Missing required item: {item}. Required: {quantity}, Available: {available_quantity}"
+            )
+
+def validate_staff(required_staff, available_staff, inventory):
+    print("Validate staff")
+    for role, count in required_staff.items():
+        if available_staff.get(role, 0) < count:
+            raise ValueError(
+                f"Insufficient staff for role '{role}'. Required: {count}, Available: {available_staff.get(role, 0)}"
+            )
+    available_items = {item["type"]: item["total_quantity"] for item in inventory["items"]}
+    # Validate staff dependencies on items
+    for staff in inventory["staff"]:
+        if staff["role"] == "Referee":
+            required_items = Referee.REQUIRED_ITEMS
+            validate_items(required_items, available_items)

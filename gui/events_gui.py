@@ -7,6 +7,7 @@ class EventSelectorGUI:
         self.root = root
         self.root.title("Event Selector")
         self.events = events
+        print(events)
 
         # Search Bar
         tk.Label(root, text="Search Events:").pack(pady=5)

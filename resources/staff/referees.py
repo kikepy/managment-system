@@ -2,12 +2,17 @@
 
 class Referee(Staff):
     #Dictionary to assign assistants by sport
-    Assistants_by_sport ={
+    Assistants_by_sport = {
         "futsal" : 2,
         "basketball" : 1,
         "volleyball" : 2
     }
 
+    REQUIRED_ITEMS = {
+        "Whistle": 1,
+        "Yellow Card": 1,
+        "Red Card": 1
+    }
 
     def __init__(self, name, sport, certification_level,assistants = None,availability=True):
         super().__init__(name, "Referee", availability)
@@ -15,11 +20,7 @@ class Referee(Staff):
         self.certification_level = certification_level
         self.required_assistants = self.Assistants_by_sport.get(sport, 0)
         self.assistants = assistants if assistants else []
-        self.required_items = {
-            "whistle": 1,
-            "yellow_card": 1,
-            "red_card": 1
-        }
+
 
     def is_eligible_assistant(self, requester_certification) -> bool:
         if requester_certification == "high":

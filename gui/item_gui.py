@@ -141,6 +141,19 @@ class ItemGUI:
                     "sport": item.sport,
                     "total_quantity": item.total_quantity,
                 })
+            # No se xq se bugueo y me los guardaba como type item asi q toco Parchear
+            elif isinstance(item, Yellow):
+                data["items"].append({
+                    "type": "Yellow Card",
+                    "name": "Yellow Card",
+                    "total_quantity": item.total_quantity,
+                })
+            elif isinstance(item, Red):
+                data["items"].append({
+                    "type": "Red Card",
+                    "name": "Red Card",
+                    "total_quantity": item.total_quantity,
+                })
             else:
                 data["items"].append({
                     "type": item.__class__.__name__,

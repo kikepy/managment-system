@@ -1,7 +1,9 @@
-﻿import tkinter as tk
+﻿import json
+import tkinter as tk
 from datetime import datetime, timedelta
 from tkinter import messagebox
 from events import *
+from events.validation import validate_items, validate_staff
 
 FACULTIES = [
     "MATCOM", "FHS", "LEX", "EKO",
@@ -170,19 +172,50 @@ class EventCreationGUI:
             else:
                 raise ValueError("Invalid event type.")
 
-            # Load existing events
-            existing_events = scheduling.load_schedule_from_file()
 
-            # Validate for overlaps
+            events_file_path = 'events.json'
+            data_file_path = 'data.json'
+
+            # Load available resources and staff
+            with open(data_file_path, 'r') as file:
+                data = json.load(file)
+
+
+            available_items = {item['type']: item['total_quantity'] for item in data['items']}
+            available_staff = {staff['role']: staff['availability'] for staff in data['staff']}
+            inventory = data
+
+            # Validate items and staff using the Event class method
             try:
-                 validation.validate_no_overlap(event, existing_events)
-            except ValueError as e:
-                messagebox.showerror("Overlap Error", str(e))
-                return  # Stop further execution if there's an overlap
+                validate_items(FriendlyMatch.REQUIRED_ITEMS, available_items)
+                # Validate staff
+                validate_staff(FriendlyMatch.REQUIRED_STAFF, available_staff, inventory)
 
-            # Save the event using the callback
-            self.save_event_callback(event)
-            self.root.destroy()
+                # Load existing events
+                try:
+                    with open(events_file_path, 'r') as file:
+                        events_data = json.load(file)
+                except FileNotFoundError:
+                    events_data = {}
+
+                 # Ensure the event type exists in the dictionary
+                if event_type not in events_data:
+                    events_data[event_type] = []
+
+                # Add the new event to the appropriate category
+                events_data[event_type].append(event.to_dict())
+
+                # Save the updated events data
+                with open(events_file_path, 'w') as file:
+                    json.dump(events_data, file, indent=4)
+
+                messagebox.showinfo("Success", "Event saved successfully!")
+                self.root.destroy()
+
+                print(events_file_path)
+
+            except ValueError as e:
+                messagebox.showerror("Error", f"Validation failed: {e}")
 
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {e}")

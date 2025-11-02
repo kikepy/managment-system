@@ -47,33 +47,6 @@ class Event:
     def calculate_end_time(self):
         return self.start + timedelta(minutes=self.duration)
 
-    @classmethod
-    def validate_items_and_staff(cls, sport, event_type, available_items, available_staff, inventory):
-        # Validate items
-        required_items = cls.required_items.get(sport, {})
-        for item, quantity in required_items.items():
-            if available_items.get(item, 0) < quantity:
-                raise ValueError(
-                    f"Insufficient {item} for {sport}. Required: {quantity}, Available: {available_items.get(item, 0)}"
-                )
-
-        # Validate staff
-        required_staff = cls.required_staff.get(event_type, {})
-        for role, count in required_staff.items():
-            if available_staff.get(role, 0) < count:
-                raise ValueError(
-                    f"Insufficient staff for role '{role}' in {event_type} event. Required: {count}, Available: {available_staff.get(role, 0)}"
-                )
-
-        # Check dependencies for staff
-        staff_list = [
-            {"role": role, "name": f"{role}_{i + 1}", "required_items": required_items}
-            for role, count in required_staff.items()
-            for i in range(count)
-        ]
-        if not check_dependencies(staff_list, inventory):
-            raise ValueError("Staff dependencies validation failed.")
-
     def to_dict(self):
         return {
             "name": self.name,
