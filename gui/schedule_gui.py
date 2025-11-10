@@ -1,4 +1,5 @@
-﻿import tkinter as tk
+﻿import json
+import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import Calendar
 from datetime import datetime, time
@@ -6,39 +7,65 @@ from events import *
 from events import validation, scheduling
 from gui.eventcreation_gui import EventCreationGUI
 
-class CustomCalendar:
-    def __init__(self, parent, on_date_select, **kwargs):
-        # Initialize the tkcalendar.Calendar widget
-        self.calendar = Calendar(parent, **kwargs)
-        self.calendar.pack(pady=20)
-        self.calendar.bind("<<CalendarSelected>>", lambda e: on_date_select(self.get_selected_date()))
+class CustomCalendar(Calendar):
+    def __init__(self, parent, **kwargs):
+        kwargs['selectmode'] = 'day'
+        kwargs['showweeknumbers'] = False
+        super().__init__(parent, **kwargs)
 
-    def get_selected_date(self):
-        # Return the currently selected date
-        return self.calendar.selection_get()
+        # Configure the tag appearance
+        self.tag_config('has_events', background='yellow', foreground='black')
+        self.tag_config('tournament_day', background='red', foreground='white')
+        self.load_events()
 
-    def clear_highlights(self):
-        # Remove all calendar events
-        self.calendar.calevent_remove("all")
+    def load_events(self):
+        # Clear existing calendar events
+        for date, tags in self.get_calevents():
+            self.calevent_remove(date)
 
-    def highlight_full(self, date):
-        # Highlight a date as "full" (e.g., red background)
-        self.calendar.calevent_create(date, "Full", "full")
-        self.calendar.tag_config("full", background="red", foreground="white")
+        try:
+            with open('events.json', 'r') as file:
+                events_data = json.load(file)
 
-    def highlight_not_full(self, date):
-        # Highlight a date as "not full" (e.g., yellow background)
-        self.calendar.calevent_create(date, "Not Full", "not_full")
-        self.calendar.tag_config("not_full", background="yellow", foreground="black")
+            # First mark tournament days
+            tournament_days = set()
+            if 'Tournament' in events_data:
+                for event in events_data['Tournament']:
+                    for match in event['matches']:
+                        match_date = datetime.fromisoformat(
+                            match['schedule']['start']
+                        ).date()
+                        tournament_days.add(match_date)
+                        self.calevent_create(
+                            date=match_date,
+                            text=f"Tournament: {event['event_info']['name']}",
+                            tags='tournament_day'
+                        )
 
+            # Then mark other events (only if not a tournament day)
+            for event_type, events in events_data.items():
+                if event_type != 'Tournament':
+                    for event in events:
+                        event_date = datetime.fromisoformat(
+                            event['schedule']['start']
+                        ).date()
+                        if event_date not in tournament_days:
+                            event_name = event['event_info']['name']
+                            self.calevent_create(
+                                date=event_date,
+                                text=f"{event_type}: {event_name}",
+                                tags='has_events'
+                            )
+
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"Error loading events: {e}")
 
 class ScheduleGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Event Calendar")
-
-        # Load events from the file
-        self.events = scheduling.load_schedule_from_file()
 
         #Initialize selected and current date
         self.selected_date = datetime.now().date()
@@ -47,38 +74,20 @@ class ScheduleGUI:
         # Calendar widget
         self.custom_calendar = CustomCalendar(
             root,
-            on_date_select=self.update_selected_date,
             date_pattern="yyyy-mm-dd",
             selectmode="day",
         )
+        self.custom_calendar.pack(pady=10)
 
-
-        # Highlight busy days
-        self.highlight_busy_days()
+        # Bind date selection event
+        self.custom_calendar.bind("<<CalendarSelected>>", self.update_selected_date)
 
         # Button to confirm event creation
         tk.Button(root, text="Create Event", command=self.create_event).pack(pady=10)
 
-    def update_selected_date(self, date):
+    def update_selected_date(self, event=None):
         # Update the selected date when the user selects a date in the calendar
-        self.selected_date = date
-
-    def highlight_busy_days(self):
-        # Clear existing highlights
-        self.custom_calendar.clear_highlights()
-
-        # Highlight days based on event count
-        event_counts = {}
-        for event in self.events:
-            event_date = event.start.date()
-            event_counts[event_date] = event_counts.get(event_date, 0) + 1
-
-        for date, count in event_counts.items():
-            if count >= 5:  # Example: 5 or more events = "full"
-                self.custom_calendar.highlight_full(date)
-            else:  # Less than 5 events = "not full"
-                self.custom_calendar.highlight_not_full(date)
-
+        self.selected_date = self.custom_calendar.selection_get()
 
     def create_event(self):
         # Open a new window for event creation
@@ -96,18 +105,24 @@ class ScheduleGUI:
     def save_event(self, event):
         try:
             # Load existing events
-            existing_events = scheduling.load_schedule_from_file()
-            # Validate for overlaps
-            validation.validate_no_overlap(event, existing_events)
-        except ValueError as e:
-            # Show overlap error message
-            messagebox.showerror("Overlap Error", str(e))
-            return  # Stop further execution if there's an overlap
+            with open('events.json', 'r') as file:
+                events_data = json.load(file)
 
-        # If no overlap, save the event
-        self.events.append(event)
-        scheduling.save_schedule_to_file(self.events)
-        self.highlight_busy_days()
-        messagebox.showinfo("Success", "Event saved successfully!")
+            # Add new event to events data
+            event_type = event.event_type.capitalize()
+            if event_type not in events_data:
+                events_data[event_type] = []
+            events_data[event_type].append(event.to_dict())
+
+            # Save updated events
+            with open('events.json', 'w') as file:
+                json.dump(events_data, file, indent=4)
+
+            # Reload calendar events
+            self.custom_calendar.load_events()
+            messagebox.showinfo("Success", "Event saved successfully!")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save event: {str(e)}")
 
 

@@ -1,6 +1,7 @@
 ﻿from .event import Event
 from datetime import datetime
-from resources.staff import *
+from datetime import timedelta
+
 
 class FriendlyMatch(Event):
     REQUIRED_ITEMS = {"Ball" : 2}
@@ -10,21 +11,40 @@ class FriendlyMatch(Event):
         validate_friendly(date=date, teams=teams)
         super().__init__(name, date, location, sport, event_type="friendly")  # Pass `date` as `start`
         self.teams = teams
+        self.end = date + timedelta(minutes=90)
 
 
     def to_dict(self):
-        base_dict = super().to_dict()  # Get the base event details
-        base_dict.update({
-            "teams": self.teams,  # Add teams to the dictionary
-        })
-        return base_dict
+        return {
+            "event_info": {
+                "name": self.name,
+                "sport": self.sport,
+                "type": "friendly"
+            },
+            "schedule": {
+                "start": self.start.isoformat(),
+                "end": self.end.isoformat(),
+                "location": self.location
+            },
+            "teams": {
+                "home": self.teams[0],
+                "away": self.teams[1]
+            },
+            "resources": {
+                "items": self.REQUIRED_ITEMS,
+                "staff": self.REQUIRED_STAFF
+            }
+        }
 
     @classmethod
     def from_dict(cls, data):
-        return cls(
-            name=data["name"],
-            date=datetime.fromisoformat(data["start"]),  # Convert ISO string to datetime
-            location=data["location"],
-            sport=data["sport"],
-            teams=data["teams"]
+        instance = cls(
+            name=data["event_info"]["name"],
+            date=datetime.fromisoformat(data["schedule"]["start"]),
+            location=data["schedule"]["location"],
+            sport=data["event_info"]["sport"],
+            teams=[data["teams"]["home"], data["teams"]["away"]]
         )
+        instance.end = datetime.fromisoformat(data["schedule"]["end"])
+        return instance
+

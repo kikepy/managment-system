@@ -3,13 +3,18 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from tkinter import messagebox
 from events import *
-from events.validation import validate_items, validate_staff
+from events.validation import validate_items, validate_staff, validate_no_overlap
 
 FACULTIES = [
     "MATCOM", "FHS", "LEX", "EKO",
     "FCOM", "BIO", "INSTEC", "FAYL", "Geo", "FLEX", "CONFIN",
     "IFAL", "AAAC", "FTUR", "ISDI", "PSICO", "FENHI", "FISICA",
     "ISRI", "QUIMICA"
+]
+
+FORMAT = [
+    "Knockout",
+    "League",
 ]
 class EventCreationGUI:
     def __init__(self, root, save_event_callback, selected_date, current_date):
@@ -107,42 +112,100 @@ class EventCreationGUI:
             self.commentators_entry.grid(row=1, column=1, padx=5, pady=5)
 
         elif event_type == "Tournament":
-            tk.Label(self.dynamic_frame, text="Teams (comma-separated):").grid(row=0, column=0, padx=5, pady=5)
-            self.teams_entry = tk.Entry(self.dynamic_frame)
-            self.teams_entry.grid(row=0, column=1, padx=5, pady=5)
+            #Hide all that shit
+            self.location_menu.grid_remove()
+            self.start_hour.grid_remove()
+            self.start_minute.grid_remove()
+            self.duration_spinbox.grid_remove()
 
-            tk.Label(self.dynamic_frame, text="Format (knockout/round-robin/mixed):").grid(row=1, column=0, padx=5, pady=5)
-            self.format_entry = tk.Entry(self.dynamic_frame)
-            self.format_entry.grid(row=1, column=1, padx=5, pady=5)
+            # Teams selection
+            tk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, padx=5, pady=5)
+            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", exportselection=False, height=10)
+            for faculty in FACULTIES:
+                self.teams_listbox.insert("end", faculty)
+            self.teams_listbox.grid(row=0, column=1, padx=5, pady=5)
+
+            # Tournament format
+            tk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, padx=5, pady=5)
+            self.format_var = tk.StringVar(value="Knockout")
+            self.format_menu = tk.OptionMenu(self.dynamic_frame, self.format_var, *FORMAT)
+            self.format_menu.grid(row=1, column=1, padx=5, pady=5)
+
+            # Days selection frame
+            days_frame = tk.Frame(self.dynamic_frame)
+            days_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+
+            # Calendar for date selection
+            from tkcalendar import Calendar
+            self.tournament_calendar = Calendar(
+                days_frame,
+                selectmode='day',
+                date_pattern='yyyy-mm-dd'
+            )
+            self.tournament_calendar.pack(side=tk.LEFT, padx=5, pady=5)
+
+            # Selected dates listbox
+            self.selected_dates = []
+            self.dates_listbox = tk.Listbox(days_frame, height=10, width=30)
+            self.dates_listbox.pack(side=tk.LEFT, padx=5, pady=5)
+
+            # Add/Remove date buttons
+            buttons_frame = tk.Frame(days_frame)
+            buttons_frame.pack(side=tk.LEFT, padx=5, pady=5)
+
+            tk.Button(buttons_frame, text="Add Date", command=self.add_tournament_date).pack(pady=2)
+            tk.Button(buttons_frame, text="Remove Date", command=self.remove_tournament_date).pack(pady=2)
 
         elif event_type == "Training":
             tk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, padx=5, pady=5)
             self.coach_entry = tk.Entry(self.dynamic_frame)
             self.coach_entry.grid(row=0, column=1, padx=5, pady=5)
 
+    def add_tournament_date(self):
+        selected_date = self.tournament_calendar.get_date()
+        if selected_date:
+            if selected_date not in self.selected_dates:
+                self.selected_dates.append(selected_date)
+                self.selected_dates.sort()
+                self.update_dates_listbox()
+
+    def remove_tournament_date(self):
+        selection = self.dates_listbox.curselection()
+        if selection:
+            index = selection[0]
+            date = self.dates_listbox.get(index)
+            self.selected_dates.remove(date)
+            self.update_dates_listbox()
+
+    def update_dates_listbox(self):
+        self.dates_listbox.delete(0, tk.END)
+        for date in sorted(self.selected_dates):
+            self.dates_listbox.insert(tk.END, date)
+
     def save_event(self):
-        # Collect common fields
-        event_type = self.event_type_var.get()
-        name = self.name_entry.get()
-        location = self.location_entry.get()
-        sport = self.sport_var.get()
-        start_hour = int(self.start_hour.get())
-        start_minute = int(self.start_minute.get())
-        duration = int(self.duration_spinbox.get())
-
-        # Use the selected date (passed during initialization)
-        selected_date = self.selected_date  # Ensure this is passed when initializing EventCreationGUI
-        start_datetime = datetime.combine(selected_date, datetime.min.time()).replace(
-            hour=start_hour, minute=start_minute
-        )
-        end_datetime = start_datetime + timedelta(minutes=duration)
-
-        # Check if the event is in the past
-        if start_datetime < datetime.now():
-            messagebox.showerror("Error", "The event cannot be created in the past.")
-            return
-
         try:
+            # Collect common fields
+            event_type = self.event_type_var.get()
+            name = self.name_entry.get()
+            location = self.location_entry.get()
+            sport = self.sport_var.get()
+            start_hour = int(self.start_hour.get())
+            start_minute = int(self.start_minute.get())
+            duration = int(self.duration_spinbox.get())
+
+            # Use the selected date (passed during initialization)
+            selected_date = self.selected_date  # Ensure this is passed when initializing EventCreationGUI
+            start_datetime = datetime.combine(selected_date, datetime.min.time()).replace(
+                hour=start_hour, minute=start_minute
+            )
+            end_datetime = start_datetime + timedelta(minutes=duration)
+
+            # Check if the event is in the past
+            if start_datetime < datetime.now():
+                messagebox.showerror("Error", "The event cannot be created in the past.")
+                return
+
+
             # Collect dynamic fields based on event type
             if event_type == "Friendly":
                 # Use the Listbox to get selected teams
@@ -154,6 +217,7 @@ class EventCreationGUI:
                     return
 
                 event = FriendlyMatch(name, start_datetime, location, sport, teams)
+                event.end = start_datetime + timedelta(minutes=int(self.duration_spinbox.get()))
 
             elif event_type == "Official":
                 referee = {"level": self.referee_entry.get()}
@@ -161,9 +225,34 @@ class EventCreationGUI:
                 event = OfficialMatch(name, start_datetime, location, referee, commentators)
 
             elif event_type == "Tournament":
-                teams = [team.strip() for team in self.teams_entry.get().split(",")]
-                format = self.format_entry.get()
-                event = Tournament(name, start_datetime, end_datetime, location, teams, format)
+                # Get selected teams
+                selected_indices = self.teams_listbox.curselection()
+                if not selected_indices:
+                    messagebox.showerror("Error", "Please select teams for the tournament")
+                    return
+                teams = [self.teams_listbox.get(i) for i in selected_indices]
+
+                # Get tournament format
+                format = self.format_var.get().lower()
+
+                # Get selected days
+                if not self.selected_dates:
+                    messagebox.showerror("Error", "Please select tournament days")
+                    return
+
+                # Convert string dates to datetime objects
+                specific_days = [datetime.strptime(date, '%Y-%m-%d') for date in self.selected_dates]
+
+                # Create tournament
+                event = Tournament(
+                    name=name,
+                    date=start_datetime,
+                    location=location,
+                    sport=sport,
+                    teams=teams,
+                    format=format,
+                    specific_days=specific_days
+                )
 
             elif event_type == "Training":
                 coach = self.coach_entry.get()
@@ -195,12 +284,20 @@ class EventCreationGUI:
                 try:
                     with open(events_file_path, 'r') as file:
                         events_data = json.load(file)
+                        existing_events = []
+
+                        for event_dict in events_data.get("Friendly", []):
+                            existing_events.append(FriendlyMatch.from_dict(event_dict))
+
+                        validate_no_overlap(event, existing_events)
                 except FileNotFoundError:
                     events_data = {}
 
                  # Ensure the event type exists in the dictionary
                 if event_type not in events_data:
                     events_data[event_type] = []
+
+
 
                 # Add the new event to the appropriate category
                 events_data[event_type].append(event.to_dict())

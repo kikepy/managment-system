@@ -1,81 +1,99 @@
 ﻿from .event import Event
 from .validation import validate_tournament
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class Tournament(Event):
-    def __init__(self, name, date, location, sport, teams, format, specific_days=None, schedule_format="consecutive"):
-        validate_tournament(teams=teams, format=format, date=date)
+    REQUIRED_ITEMS = {"Ball": 4}
+    REQUIRED_STAFF = {"Referee": 2, "Commentator": 1}
+
+    def __init__(self, name, date, location, sport, teams, format, specific_days):
+        validate_tournament(teams, format, date, specific_days)
         super().__init__(name, date, location, sport, event_type="tournament")
-        self.date = date  # Ensure the date is set
         self.teams = teams
         self.format = format
         self.specific_days = specific_days
-        self.schedule_format = schedule_format
-        self.schedule = self.create_schedule(sport, len(teams), format, specific_days, schedule_format)
+        self.schedule = []
 
-    def calculate_duration(self, sport, num_teams, format):
-        match_duration = self.calculate_total_duration(sport)
-        print(f"Match duration: {match_duration}")  # Debugging
+    def _create_knockout_matches(self):
+        import random
+        matches = []
+        teams = self.teams.copy()
+        random.shuffle(teams)
 
-        if format == "knockout":
-            total_matches = num_teams - 1
-        elif format == "round-robin":
-            total_matches = num_teams * (num_teams - 1) // 2
-        elif format == "mixed":
-            total_matches = (num_teams - 1) + (num_teams * (num_teams - 1) // 2)
-        else:
-            raise ValueError("Invalid tournament format.")
+        round_num = 1
+        while len(teams) > 1:
+            round_matches = []
+            for i in range(0, len(teams), 2):
+                if i + 1 < len(teams):
+                    match = {
+                        "round": round_num,
+                        "teams": {
+                            "home": teams[i],
+                            "away": teams[i + 1]
+                        },
+                        "event_info": {
+                            "name": f"Round {round_num} - Match {len(round_matches) + 1}",
+                            "sport": self.sport,
+                            "type": "tournament"
+                        }
+                    }
+                    round_matches.append(match)
 
-        print(f"Total matches: {total_matches}")  # Debugging
+            matches.extend(round_matches)
+            teams = teams[::2]  # Winners advance (placeholder)
+            round_num += 1
 
-        total_duration = total_matches * match_duration
-        print(f"Total duration (minutes): {total_duration}")  # Debugging
+        return matches
 
-        return math.ceil(total_duration / (8 * 60))  # Assuming 8 hours per day
+    def _create_league_matches(self):
+        matches = []
+        match_num = 1
 
-    def create_schedule(self, sport, num_teams, format, specific_days, schedule_format):
-        total_days = self.calculate_duration(sport, num_teams, format)
-        print(f"Total days calculated: {total_days}")  # Debugging
-        schedule = []
-        current_date = self.date  # Use the provided date
+        for i, team1 in enumerate(self.teams):
+            for team2 in self.teams[i + 1:]:
+                match = {
+                    "round": 1,
+                    "teams": {
+                        "home": team1,
+                        "away": team2
+                    },
+                    "event_info": {
+                        "name": f"League Match {match_num}",
+                        "sport": self.sport,
+                        "type": "tournament"
+                    }
+                }
+                matches.append(match)
+                match_num += 1
 
-        if schedule_format == "consecutive":
-            schedule = [self.date + timedelta(days=i) for i in range(total_days)]
-        elif schedule_format == "specific_days":
-            if not specific_days:
-                raise ValueError("Specific days must be provided for 'specific_days' format.")
-            while len(schedule) < total_days:
-                if current_date.weekday() in specific_days:
-                    schedule.append(current_date)
-                current_date += timedelta(days=1)
-            if len(schedule) < total_days:
-                raise ValueError("Not enough specific days to schedule the tournament.")
-        elif schedule_format == "custom_intervals":
-            interval = 2  # Example: every 2 days
-            for i in range(total_days):
-                schedule.append(self.date + timedelta(days=i * interval))
-        else:
-            raise ValueError(f"Invalid schedule format: {schedule_format}")
-
-        print(f"Generated schedule: {schedule}")  # Debugging
-        return schedule
+        return matches
 
     def to_dict(self):
-        base_dict = super().to_dict()  # Get the base event details
-        base_dict.update({
+        return {
+            "event_info": {
+                "name": self.name,
+                "sport": self.sport,
+                "type": "tournament"
+            },
             "teams": self.teams,
             "format": self.format,
-            "schedule_format": self.schedule_format,
-            "schedule": [date.isoformat() for date in self.schedule],  # Include the schedule
-        })
-        return base_dict
+            "specific_days": [day.strftime('%Y-%m-%d') for day in self.specific_days],
+            "schedule": [],  # Empty schedule for now
+            "sources": {
+                "items": self.REQUIRED_ITEMS,
+                "staff": self.REQUIRED_STAFF
+            }
+        }
+
     @classmethod
     def from_dict(cls, data):
-        return cls(
-            name=data["name"],
-            date=datetime.fromisoformat(data["date"]),
-            location=data["location"],
-            sport=data["sport"],
+        instance = cls(
+            name=data["event_info"]["name"],
+            date=datetime.fromisoformat(data["matches"][0]["schedule"]["start"]),
+            location=data["matches"][0]["schedule"]["location"],
+            sport=data["event_info"]["sport"],
             teams=data["teams"],
+            format=data["format"],
+            specific_days=[datetime.fromisoformat(day) for day in data["specific_days"]]
         )
+        return instance
