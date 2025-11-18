@@ -25,15 +25,25 @@ def load_schedule_from_file():
     }
 
     try:
-        with open("events.json", "r") as file:  # Corrected path
+        with open("events.json", "r") as file:
             data = json.load(file)
 
         events = []
         for event_type, event_list in data.items():
             for event in event_list:
-                if event["event_type"] in EVENT_CLASSES:
-                    events.append(EVENT_CLASSES[event["event_type"]].from_dict(event))
-        print(events)
+                # Extract event_type from event_info if not directly available
+                event_type = event.get("event_type") or event["event_info"].get("type")
+                if not event_type:
+                    print(f"Skipping event due to missing 'event_type': {event}")
+                    continue
+
+                if event_type in EVENT_CLASSES:
+                    try:
+                        events.append(EVENT_CLASSES[event_type].from_dict(event))
+                    except Exception as e:
+                        print(f"Error processing event: {event}. Error: {e}")
+                else:
+                    print(f"Unknown event type: {event_type}")
         return events
     except FileNotFoundError:
         print("Schedule file not found.")

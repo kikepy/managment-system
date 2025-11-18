@@ -2,9 +2,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import Calendar
-from datetime import datetime, time
-from events import *
-from events import validation, scheduling
+from datetime import datetime
 from gui.eventcreation_gui import EventCreationGUI
 
 class CustomCalendar(Calendar):
@@ -27,38 +25,47 @@ class CustomCalendar(Calendar):
             with open('events.json', 'r') as file:
                 events_data = json.load(file)
 
-            # First mark tournament days
+            # Preprocess events into a flat structure
             tournament_days = set()
-            if 'Tournament' in events_data:
-                for event in events_data['Tournament']:
-                    for match in event['matches']:
-                        match_date = datetime.fromisoformat(
-                            match['schedule']['start']
-                        ).date()
-                        tournament_days.add(match_date)
-                        self.calevent_create(
-                            date=match_date,
-                            text=f"Tournament: {event['event_info']['name']}",
-                            tags='tournament_day'
-                        )
+            other_events = []
 
-            # Then mark other events (only if not a tournament day)
             for event_type, events in events_data.items():
-                if event_type != 'Tournament':
-                    for event in events:
-                        event_date = datetime.fromisoformat(
-                            event['schedule']['start']
-                        ).date()
-                        if event_date not in tournament_days:
-                            event_name = event['event_info']['name']
-                            self.calevent_create(
-                                date=event_date,
-                                text=f"{event_type}: {event_name}",
-                                tags='has_events'
-                            )
+                for event in events:
+                    if event_type == "Tournament":
+                        for match in event.get('schedule', []):
+                            if isinstance(match, dict) and 'schedule' in match:
+                                start = match['schedule'].get('start')
+                                if start and start != "TBD":
+                                    try:
+                                        match_date = datetime.fromisoformat(start).date()
+                                        tournament_days.add(match_date)
+                                        self.calevent_create(
+                                            date=match_date,
+                                            text=f"Tournament: {event['event_info']['name']}",
+                                            tags='tournament_day'
+                                        )
+                                    except ValueError:
+                                        print(f"Invalid date format in match: {match}")
+                    else:
+                        start = event['schedule'].get('start')
+                        if start and start != "TBD":
+                            try:
+                                event_date = datetime.fromisoformat(start).date()
+                                other_events.append((event_date, event_type, event['event_info']['name']))
+                            except ValueError:
+                                print(f"Invalid date format in event: {event}")
+
+            # Add other events only if they are not on tournament days
+            for event_date, event_type, event_name in other_events:
+                if event_date not in tournament_days:
+                    self.calevent_create(
+                        date=event_date,
+                        text=f"{event_type}: {event_name}",
+                        tags='has_events'
+                    )
 
         except FileNotFoundError:
-            pass
+            print("Events file not found.")
         except Exception as e:
             print(f"Error loading events: {e}")
 

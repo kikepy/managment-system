@@ -94,8 +94,25 @@ class EventCreationGUI:
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
 
+        if event_type == "Training":
+            tk.Label(self.root, text="Duration (minutes):").grid(row=3, column=0, padx=5, pady=5)
+            self.duration_spinbox.grid(row=3, column=1, padx=5, pady=5)
+            tk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, padx=5, pady=5)
+            self.coach_entry = tk.Entry(self.dynamic_frame)
+            self.coach_entry.grid(row=0, column=1, padx=5, pady=5)
+        else:
+            # Ocultar el campo Duration para otros tipos de eventos
+            self.duration_spinbox.grid_remove()
+            for label in [self.root.grid_slaves(row=3, column=0)]:
+                if label:
+                    label[0].grid_remove()
+
         # Add fields based on event type
         if event_type == "Friendly":
+            self.duration_spinbox.grid_remove()
+            for label in [self.root.grid_slaves(row=3, column=0)]:
+                if label:
+                    label[0].grid_remove()
             tk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, padx=5, pady=5)
             self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", exportselection=False, height=10)
             for faculty in FACULTIES:
@@ -103,6 +120,10 @@ class EventCreationGUI:
             self.teams_listbox.grid(row=0, column=1, padx=5, pady=5)
 
         elif event_type == "Official":
+            self.duration_spinbox.grid_remove()
+            for label in [self.root.grid_slaves(row=3, column=0)]:
+                if label:
+                    label[0].grid_remove()
             tk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, padx=5, pady=5)
             self.referee_entry = tk.Entry(self.dynamic_frame)
             self.referee_entry.grid(row=0, column=1, padx=5, pady=5)
@@ -117,6 +138,11 @@ class EventCreationGUI:
             self.start_hour.grid_remove()
             self.start_minute.grid_remove()
             self.duration_spinbox.grid_remove()
+            for label in [self.root.grid_slaves(row=1, column=0),
+                          self.root.grid_slaves(row=2, column=0),
+                          self.root.grid_slaves(row=3, column=0)]:
+                if label:
+                    label[0].grid_remove()
 
             # Teams selection
             tk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, padx=5, pady=5)
@@ -156,10 +182,6 @@ class EventCreationGUI:
             tk.Button(buttons_frame, text="Add Date", command=self.add_tournament_date).pack(pady=2)
             tk.Button(buttons_frame, text="Remove Date", command=self.remove_tournament_date).pack(pady=2)
 
-        elif event_type == "Training":
-            tk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, padx=5, pady=5)
-            self.coach_entry = tk.Entry(self.dynamic_frame)
-            self.coach_entry.grid(row=0, column=1, padx=5, pady=5)
 
     def add_tournament_date(self):
         selected_date = self.tournament_calendar.get_date()

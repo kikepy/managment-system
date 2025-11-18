@@ -41,25 +41,7 @@ def validate_no_overlap(new_event, existing_events):
                     f"from {event.start} to {event.end}."
                 )
 
-        # Check for team overlaps if both events have teams
-        if hasattr(event, 'teams') and hasattr(new_event, 'teams'):
-            event_teams = set()
-            new_event_teams = set()
 
-            # Handle different team formats
-            if isinstance(event.teams, list):
-                event_teams = set(event.teams)
-
-            if isinstance(new_event.teams, list):
-                new_event_teams = set(new_event.teams)
-
-            # Check if any team is playing in both events
-            if event_teams & new_event_teams:  # intersection of sets
-                overlapping_teams = event_teams & new_event_teams
-                raise ValueError(
-                    f"Team(s) {', '.join(overlapping_teams)} already have a match "
-                    f"at {event.location} from {event.start} to {event.end}."
-                )
 
 def validate_date(event_date):
     try:
@@ -109,38 +91,9 @@ def validate_tournament(teams, format, date, specific_days):
     if not specific_days:
         raise ValueError("Tournament must have specific days defined")
 
-    # Load existing events to check for team availability
-    try:
-        with open('events.json', 'r') as file:
-            events_data = json.load(file)
-
-        # Convert specific_days to set of dates for comparison
-        tournament_dates = {day.date() for day in specific_days}
-
-        # Check each event type
-        for event_type, events in events_data.items():
-            for event in events:
-                event_date = datetime.fromisoformat(
-                    event['schedule']['start']
-                ).date()
-
-                # If event is on a tournament day, check for team conflicts
-                if event_date in tournament_dates:
-                    if 'teams' in event:
-                        event_teams = set()
-                        if isinstance(event['teams'], dict):
-                            event_teams.update([event['teams']['home'], event['teams']['away']])
-                        elif isinstance(event['teams'], list):
-                            event_teams.update(event['teams'])
-
-                        # Check for team overlap
-                        overlapping_teams = set(teams) & event_teams
-                        if overlapping_teams:
-                            raise ValueError(
-                                f"Team(s) {', '.join(overlapping_teams)} already have an event on {event_date}"
-                            )
-    except FileNotFoundError:
-        pass  # No existing events to check against
+    formatted_days = ', '.join(day.strftime('%Y-%m-%d') for day in specific_days)
+    participating_teams = ', '.join(teams)
+    print(f"Tournament starts on {formatted_days}. Teams participating: {participating_teams}.")
 def validate_training():
     # Placeholder for training session validation logic
     pass
