@@ -18,50 +18,81 @@ FORMAT = [
     "League",
 ]
 class EventCreationGUI:
-    def __init__(self, root, save_event_callback, selected_date, current_date):
+    def __init__(self, root, save_event_callback):
         self.root = root
         self.root.title("Create Event")
         self.save_event_callback = save_event_callback
-        self.selected_date = selected_date
-        self.current_date = current_date
+        self.root.geometry("900x700")
+        self.root.resizable(True, True)
+        self.root.selected_date = datetime.now().date()  # Default to today's date
+        self.root.current_date = datetime.now().date()
         self.selected_dates = []
 
-        common_frame = ttk.LabelFrame(root, text="Event Details", padding=10)
-        common_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        self.dynamic_frame = ttk.Frame(root)
+        self.dynamic_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        ttk.Label(common_frame, text="Event Name:").grid(row=0, column=0, sticky="w", pady=5)
-        self.name_entry = ttk.Entry(common_frame, width=30)
+        # Calendar on the left
+        calendar_frame = ttk.LabelFrame(self.dynamic_frame, text="Select Date", padding=10)
+        calendar_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ns")
+        self.calendar = Calendar(calendar_frame, selectmode="day", date_pattern="yyyy-mm-dd")
+        self.calendar.grid(row=0, column=0, pady=5)
+
+        # Add a Listbox and buttons for managing selected dates
+        ttk.Label(self.dynamic_frame, text="Selected Dates:").grid(row=3, column=0, sticky="w", pady=5)
+        self.dates_listbox = tk.Listbox(self.dynamic_frame, height=5)
+        self.dates_listbox.grid(row=3, column=1, pady=5)
+
+        ttk.Button(self.dynamic_frame, text="Add Date", command=self.add_tournament_date).grid(row=4, column=0, pady=5)
+        ttk.Button(self.dynamic_frame, text="Remove Date", command=self.remove_tournament_date).grid(row=4, column=1, pady=5)
+
+        # Event creation form on the right
+        form_frame = ttk.LabelFrame(self.dynamic_frame, text="Event Details", padding=10)
+        form_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+        ttk.Label(form_frame, text="Event Name:").grid(row=0, column=0, sticky="w", pady=5)
+        self.name_entry = ttk.Entry(form_frame, width=30)
         self.name_entry.grid(row=0, column=1, pady=5)
 
-        ttk.Label(common_frame, text="Location:").grid(row=1, column=0, sticky="w", pady=5)
-        self.location_entry = ttk.Combobox(common_frame, values=["Stadium A", "Stadium B", "Stadium C"],
+        ttk.Label(form_frame, text="Location:").grid(row=1, column=0, sticky="w", pady=5)
+        self.location_entry = ttk.Combobox(form_frame, values=["Stadium A", "Stadium B", "Stadium C"],
                                            state="readonly")
         self.location_entry.grid(row=1, column=1, pady=5)
         self.location_entry.set("Stadium A")
 
-        ttk.Label(common_frame, text="Start Time:").grid(row=2, column=0, sticky="w", pady=5)
-        time_frame = ttk.Frame(common_frame)
+        ttk.Label(form_frame, text="Start Time:").grid(row=2, column=0, sticky="w", pady=5)
+        time_frame = ttk.Frame(form_frame)
         time_frame.grid(row=2, column=1, sticky="w")
         self.start_hour = ttk.Spinbox(time_frame, from_=7, to=18, width=5)
         self.start_hour.grid(row=0, column=0, padx=(0, 5))
         self.start_minute = ttk.Spinbox(time_frame, from_=0, to=59, width=5)
         self.start_minute.grid(row=0, column=1)
 
-        ttk.Label(common_frame, text="Duration (minutes):").grid(row=3, column=0, sticky="w", pady=5)
-        self.duration_spinbox = ttk.Spinbox(common_frame, from_=15, to=480, increment=15, width=10)
+        ttk.Label(form_frame, text="Duration (minutes):").grid(row=3, column=0, sticky="w", pady=5)
+        self.duration_spinbox = ttk.Spinbox(form_frame, from_=15, to=480, increment=15, width=10)
         self.duration_spinbox.grid(row=3, column=1, pady=5)
 
-        ttk.Label(common_frame, text="Event Type:").grid(row=4, column=0, sticky="w", pady=5)
+        ttk.Label(form_frame, text="Event Type:").grid(row=4, column=0, sticky="w", pady=5)
         self.event_type_var = tk.StringVar(value="Friendly")
-        self.event_type_menu = ttk.Combobox(common_frame, textvariable=self.event_type_var,
+        self.event_type_menu = ttk.Combobox(form_frame, textvariable=self.event_type_var,
                                             values=["Friendly", "Official", "Tournament", "Training"], state="readonly")
         self.event_type_menu.grid(row=4, column=1, pady=5)
         self.event_type_menu.bind("<<ComboboxSelected>>", self.update_dynamic_fields)
 
-        self.dynamic_frame = ttk.LabelFrame(root, text="Event-Specific Details", padding=10)
-        self.dynamic_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        self.dynamic_frame = ttk.LabelFrame(form_frame, text="Event-Specific Details", padding=10)
+        self.dynamic_frame.grid(row=5, column=0, columnspan=2, pady=10, sticky="ew")
 
-        ttk.Button(root, text="Save Event", command=self.save_event).grid(row=2, column=0, pady=10)
+        ttk.Button(root, text="Save Event", command=self.save_event).grid(row=1, column=0, pady=10)
+
+        # Initialize the common_frame
+        self.common_frame = ttk.LabelFrame(form_frame, text="Common Details", padding=10)
+        self.common_frame.grid(row=6, column=0, columnspan=2, pady=10, sticky="ew")
+
+        # Add the Teams Listbox to the common_frame
+        ttk.Label(self.common_frame, text="Participating Teams:").grid(row=0, column=0, sticky="w", pady=5)
+        self.teams_listbox = tk.Listbox(self.common_frame, selectmode="multiple", height=6)
+        for faculty in FACULTIES:
+            self.teams_listbox.insert(tk.END, faculty)
+        self.teams_listbox.grid(row=1, column=0, columnspan=2, pady=5)
 
         self.update_dynamic_fields()
 
@@ -72,107 +103,45 @@ class EventCreationGUI:
         event_type = self.event_type_var.get()
 
         if event_type == "Friendly":
-            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
-            self.teams_listbox.grid(row=0, column=1, pady=5)
-            for team in FACULTIES:
-                self.teams_listbox.insert("end", team)
+            pass
 
         elif event_type == "Official":
-            ttk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, sticky="w", pady=5)
+            ttk.Label(self.dynamic_frame, text="Referee Level:").grid(row=1, column=0, sticky="w", pady=5)
             self.referee_entry = ttk.Entry(self.dynamic_frame, width=20)
-            self.referee_entry.grid(row=0, column=1, pady=5)
+            self.referee_entry.grid(row=1, column=1, pady=5)
 
-            ttk.Label(self.dynamic_frame, text="Commentators:").grid(row=1, column=0, sticky="w", pady=5)
+            ttk.Label(self.dynamic_frame, text="Commentators:").grid(row=2, column=0, sticky="w", pady=5)
             self.commentators_entry = ttk.Entry(self.dynamic_frame, width=30)
-            self.commentators_entry.grid(row=1, column=1, pady=5)
+            self.commentators_entry.grid(row=2, column=1, pady=5)
 
         elif event_type == "Tournament":
-            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
-            self.teams_listbox.grid(row=0, column=1, pady=5)
-            for team in FACULTIES:
-                self.teams_listbox.insert("end", team)
-
             ttk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, sticky="w", pady=5)
             self.format_var = tk.StringVar(value="Knockout")
             self.format_menu = ttk.Combobox(self.dynamic_frame, textvariable=self.format_var, values=FORMAT,
                                             state="readonly")
             self.format_menu.grid(row=1, column=1, pady=5)
 
-            ttk.Label(self.dynamic_frame, text="Specific Days:").grid(row=2, column=0, sticky="w", pady=5)
-            self.calendar = Calendar(self.dynamic_frame, selectmode="day", date_pattern="yyyy-mm-dd")
-            self.calendar.grid(row=2, column=1, pady=5)
-
         elif event_type == "Training":
-            ttk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, sticky="w", pady=5)
+            ttk.Label(self.dynamic_frame, text="Coach Name:").grid(row=1, column=0, sticky="w", pady=5)
             self.coach_entry = ttk.Entry(self.dynamic_frame, width=30)
-            self.coach_entry.grid(row=0, column=1, pady=5)
-
-    def update_dynamic_fields(self, *args):
-        # Clear dynamic fields
-        for widget in self.dynamic_frame.winfo_children():
-            widget.destroy()
-
-        event_type = self.event_type_var.get()
-
-        if event_type == "Friendly":
-            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
-            self.teams_listbox.grid(row=0, column=1, pady=5)
-            for team in ["Team A", "Team B", "Team C"]:
-                self.teams_listbox.insert("end", team)
-
-        elif event_type == "Official":
-            ttk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, sticky="w", pady=5)
-            self.referee_entry = ttk.Entry(self.dynamic_frame, width=20)
-            self.referee_entry.grid(row=0, column=1, pady=5)
-
-            ttk.Label(self.dynamic_frame, text="Commentators:").grid(row=1, column=0, sticky="w", pady=5)
-            self.commentators_entry = ttk.Entry(self.dynamic_frame, width=30)
-            self.commentators_entry.grid(row=1, column=1, pady=5)
-
-        elif event_type == "Tournament":
-            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
-            self.teams_listbox.grid(row=0, column=1, pady=5)
-            for team in ["Team A", "Team B", "Team C", "Team D"]:
-                self.teams_listbox.insert("end", team)
-
-            ttk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, sticky="w", pady=5)
-            self.format_var = tk.StringVar(value="Knockout")
-            self.format_menu = ttk.Combobox(self.dynamic_frame, textvariable=self.format_var,
-                                            values=["Knockout", "Round-Robin"], state="readonly")
-            self.format_menu.grid(row=1, column=1, pady=5)
-
-            ttk.Label(self.dynamic_frame, text="Specific Days:").grid(row=2, column=0, sticky="w", pady=5)
-            self.calendar = Calendar(self.dynamic_frame, selectmode="day", date_pattern="yyyy-mm-dd")
-            self.calendar.grid(row=2, column=1, pady=5)
-
-        elif event_type == "Training":
-            ttk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, sticky="w", pady=5)
-            self.coach_entry = ttk.Entry(self.dynamic_frame, width=30)
-            self.coach_entry.grid(row=0, column=1, pady=5)
+            self.coach_entry.grid(row=1, column=1, pady=5)
 
     def add_tournament_date(self):
-        selected_date = self.tournament_calendar.get_date()
+        selected_date = self.calendar.get_date()
         if selected_date:
             if selected_date not in self.selected_dates:
                 self.selected_dates.append(selected_date)
-                self.selected_dates.sort()
                 self.update_dates_listbox()
 
     def remove_tournament_date(self):
-        selection = self.dates_listbox.curselection()
-        if selection:
-            index = selection[0]
-            date = self.dates_listbox.get(index)
-            self.selected_dates.remove(date)
-            self.update_dates_listbox()
+        selected_indices = self.dates_listbox.curselection()
+        for index in selected_indices[::-1]:  # Reverse to avoid index shifting
+            self.selected_dates.pop(index)
+        self.update_dates_listbox()
 
     def update_dates_listbox(self):
         self.dates_listbox.delete(0, tk.END)
-        for date in sorted(self.selected_dates):
+        for date in self.selected_dates:
             self.dates_listbox.insert(tk.END, date)
 
     def save_event(self):

@@ -2,14 +2,18 @@
 
 from select import select
 
+from gui.eventcreation_gui import EventCreationGUI
 from gui.item_gui import ItemGUI
 from gui.staff_gui import StaffGUI
-from gui.schedule_gui import ScheduleGUI
+
 
 class MainGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Management System")
+        self.root.geometry("800x600")
+        self.root.resizable(True, True)
+
 
         # Main Menu Buttons
         tk.Label(root, text="Choose an option:", font=("Arial", 16)).pack(pady=20)
@@ -29,8 +33,10 @@ class MainGUI:
 
     def schedule_events(self):
         event_window = tk.Toplevel(self.root)
-        ScheduleGUI(event_window)
-
+        EventCreationGUI(
+            root=event_window,
+            save_event_callback=None
+        )
     def open_event_search(self):
         event_window = tk.Toplevel(self.root)
         from events.scheduling import load_schedule_from_file
