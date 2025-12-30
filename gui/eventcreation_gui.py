@@ -1,9 +1,10 @@
 ﻿import json
 import tkinter as tk
+from tkinter import ttk, messagebox
+from tkcalendar import Calendar
 from datetime import datetime, timedelta
-from tkinter import messagebox
 from events import *
-from events.validation import validate_items, validate_staff, validate_no_overlap
+from events.validation import validate_event
 
 FACULTIES = [
     "MATCOM", "FHS", "LEX", "EKO",
@@ -23,165 +24,135 @@ class EventCreationGUI:
         self.save_event_callback = save_event_callback
         self.selected_date = selected_date
         self.current_date = current_date
+        self.selected_dates = []
 
-        # Common fields
-        tk.Label(root, text="Event Name:").grid(row=0, column=0, padx=5, pady=5)
-        self.name_entry = tk.Entry(root)
-        self.name_entry.grid(row=0, column=1, padx=5, pady=5)
+        common_frame = ttk.LabelFrame(root, text="Event Details", padding=10)
+        common_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-        tk.Label(root, text="Location:").grid(row=1, column=0, padx=5, pady=5)
-        self.location_entry = tk.StringVar(value="Stadium A")
-        self.location_menu = tk.OptionMenu(root, self.location_entry, "Stadium A", "Stadium B", "Stadium C",
-                                           "Stadium D")
-        self.location_menu.grid(row=1, column=1, padx=5, pady=5)
+        ttk.Label(common_frame, text="Event Name:").grid(row=0, column=0, sticky="w", pady=5)
+        self.name_entry = ttk.Entry(common_frame, width=30)
+        self.name_entry.grid(row=0, column=1, pady=5)
 
-        tk.Label(root, text="Start Time:").grid(row=2, column=0, padx=5, pady=5)
-        self.start_hour = tk.Spinbox(root, from_=7, to=18, wrap=True, width=5, command=self.adjust_time)
-        self.start_hour.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-        self.start_minute = tk.Spinbox(root, from_=0, to=59, wrap=True, width=5, command=self.adjust_time)
-        self.start_minute.grid(row=2, column=1, padx=5, pady=5, sticky="e")
+        ttk.Label(common_frame, text="Location:").grid(row=1, column=0, sticky="w", pady=5)
+        self.location_entry = ttk.Combobox(common_frame, values=["Stadium A", "Stadium B", "Stadium C"],
+                                           state="readonly")
+        self.location_entry.grid(row=1, column=1, pady=5)
+        self.location_entry.set("Stadium A")
 
-        tk.Label(root, text="Duration (minutes):").grid(row=3, column=0, padx=5, pady=5)
-        self.duration_spinbox = tk.Spinbox(root, from_=15, to=480, increment=15, width=5)
-        self.duration_spinbox.grid(row=3, column=1, padx=5, pady=5)
+        ttk.Label(common_frame, text="Start Time:").grid(row=2, column=0, sticky="w", pady=5)
+        time_frame = ttk.Frame(common_frame)
+        time_frame.grid(row=2, column=1, sticky="w")
+        self.start_hour = ttk.Spinbox(time_frame, from_=7, to=18, width=5)
+        self.start_hour.grid(row=0, column=0, padx=(0, 5))
+        self.start_minute = ttk.Spinbox(time_frame, from_=0, to=59, width=5)
+        self.start_minute.grid(row=0, column=1)
 
-        # Event type selection
-        tk.Label(root, text="Event Type:").grid(row=4, column=0, padx=5, pady=5)
+        ttk.Label(common_frame, text="Duration (minutes):").grid(row=3, column=0, sticky="w", pady=5)
+        self.duration_spinbox = ttk.Spinbox(common_frame, from_=15, to=480, increment=15, width=10)
+        self.duration_spinbox.grid(row=3, column=1, pady=5)
+
+        ttk.Label(common_frame, text="Event Type:").grid(row=4, column=0, sticky="w", pady=5)
         self.event_type_var = tk.StringVar(value="Friendly")
-        self.event_type_menu = tk.OptionMenu(root, self.event_type_var, "Friendly", "Official", "Tournament",
-                                             "Training",
-                                             command=self.update_dynamic_fields)
-        self.event_type_menu.grid(row=4, column=1, padx=5, pady=5)
+        self.event_type_menu = ttk.Combobox(common_frame, textvariable=self.event_type_var,
+                                            values=["Friendly", "Official", "Tournament", "Training"], state="readonly")
+        self.event_type_menu.grid(row=4, column=1, pady=5)
+        self.event_type_menu.bind("<<ComboboxSelected>>", self.update_dynamic_fields)
 
-        # Sport selection
-        tk.Label(root, text="Sport:").grid(row=5, column=0, padx=5, pady=5)
-        self.sport_var = tk.StringVar(value="Futsal")
-        self.sport_menu = tk.OptionMenu(root, self.sport_var, "Futsal", "Basketball", "Volleyball")
-        self.sport_menu.grid(row=5, column=1, padx=5, pady=5)
+        self.dynamic_frame = ttk.LabelFrame(root, text="Event-Specific Details", padding=10)
+        self.dynamic_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
-        # Dynamic fields frame
-        self.dynamic_frame = tk.Frame(root)
-        self.dynamic_frame.grid(row=6, column=0, columnspan=2, padx=5, pady=5)
+        ttk.Button(root, text="Save Event", command=self.save_event).grid(row=2, column=0, pady=10)
 
-        # Save button
-        tk.Button(root, text="Save Event", command=self.save_event).grid(row=7, column=0, columnspan=2, pady=10)
+        self.update_dynamic_fields()
 
-        # Initialize dynamic fields
-        self.update_dynamic_fields("Friendly")
+    def update_dynamic_fields(self, *args):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
 
-    def adjust_time(self):
-        """Adjust time to handle hour wrapping and minute overflow."""
-        hour = int(self.start_hour.get())
-        minute = int(self.start_minute.get())
+        event_type = self.event_type_var.get()
 
-        # Handle minute overflow
-        if minute >= 60:
-            minute = 0
-            hour += 1
+        if event_type == "Friendly":
+            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
+            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
+            self.teams_listbox.grid(row=0, column=1, pady=5)
+            for team in FACULTIES:
+                self.teams_listbox.insert("end", team)
 
-        # Wrap hour back to 7 AM if it exceeds 6 PM
-        if hour > 18:
-            hour = 7
+        elif event_type == "Official":
+            ttk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, sticky="w", pady=5)
+            self.referee_entry = ttk.Entry(self.dynamic_frame, width=20)
+            self.referee_entry.grid(row=0, column=1, pady=5)
 
-        # Update the Spinbox values
-        self.start_hour.delete(0, "end")
-        self.start_hour.insert(0, hour)
-        self.start_minute.delete(0, "end")
-        self.start_minute.insert(0, minute)
+            ttk.Label(self.dynamic_frame, text="Commentators:").grid(row=1, column=0, sticky="w", pady=5)
+            self.commentators_entry = ttk.Entry(self.dynamic_frame, width=30)
+            self.commentators_entry.grid(row=1, column=1, pady=5)
 
-    def update_dynamic_fields(self, event_type):
+        elif event_type == "Tournament":
+            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
+            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
+            self.teams_listbox.grid(row=0, column=1, pady=5)
+            for team in FACULTIES:
+                self.teams_listbox.insert("end", team)
+
+            ttk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, sticky="w", pady=5)
+            self.format_var = tk.StringVar(value="Knockout")
+            self.format_menu = ttk.Combobox(self.dynamic_frame, textvariable=self.format_var, values=FORMAT,
+                                            state="readonly")
+            self.format_menu.grid(row=1, column=1, pady=5)
+
+            ttk.Label(self.dynamic_frame, text="Specific Days:").grid(row=2, column=0, sticky="w", pady=5)
+            self.calendar = Calendar(self.dynamic_frame, selectmode="day", date_pattern="yyyy-mm-dd")
+            self.calendar.grid(row=2, column=1, pady=5)
+
+        elif event_type == "Training":
+            ttk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, sticky="w", pady=5)
+            self.coach_entry = ttk.Entry(self.dynamic_frame, width=30)
+            self.coach_entry.grid(row=0, column=1, pady=5)
+
+    def update_dynamic_fields(self, *args):
         # Clear dynamic fields
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
 
-        if event_type == "Training":
-            tk.Label(self.root, text="Duration (minutes):").grid(row=3, column=0, padx=5, pady=5)
-            self.duration_spinbox.grid(row=3, column=1, padx=5, pady=5)
-            tk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, padx=5, pady=5)
-            self.coach_entry = tk.Entry(self.dynamic_frame)
-            self.coach_entry.grid(row=0, column=1, padx=5, pady=5)
-        else:
-            # Ocultar el campo Duration para otros tipos de eventos
-            self.duration_spinbox.grid_remove()
-            for label in [self.root.grid_slaves(row=3, column=0)]:
-                if label:
-                    label[0].grid_remove()
+        event_type = self.event_type_var.get()
 
-        # Add fields based on event type
         if event_type == "Friendly":
-            self.duration_spinbox.grid_remove()
-            for label in [self.root.grid_slaves(row=3, column=0)]:
-                if label:
-                    label[0].grid_remove()
-            tk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, padx=5, pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", exportselection=False, height=10)
-            for faculty in FACULTIES:
-                self.teams_listbox.insert("end", faculty)
-            self.teams_listbox.grid(row=0, column=1, padx=5, pady=5)
+            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
+            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
+            self.teams_listbox.grid(row=0, column=1, pady=5)
+            for team in ["Team A", "Team B", "Team C"]:
+                self.teams_listbox.insert("end", team)
 
         elif event_type == "Official":
-            self.duration_spinbox.grid_remove()
-            for label in [self.root.grid_slaves(row=3, column=0)]:
-                if label:
-                    label[0].grid_remove()
-            tk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, padx=5, pady=5)
-            self.referee_entry = tk.Entry(self.dynamic_frame)
-            self.referee_entry.grid(row=0, column=1, padx=5, pady=5)
+            ttk.Label(self.dynamic_frame, text="Referee Level:").grid(row=0, column=0, sticky="w", pady=5)
+            self.referee_entry = ttk.Entry(self.dynamic_frame, width=20)
+            self.referee_entry.grid(row=0, column=1, pady=5)
 
-            tk.Label(self.dynamic_frame, text="Commentators (comma-separated):").grid(row=1, column=0, padx=5, pady=5)
-            self.commentators_entry = tk.Entry(self.dynamic_frame)
-            self.commentators_entry.grid(row=1, column=1, padx=5, pady=5)
+            ttk.Label(self.dynamic_frame, text="Commentators:").grid(row=1, column=0, sticky="w", pady=5)
+            self.commentators_entry = ttk.Entry(self.dynamic_frame, width=30)
+            self.commentators_entry.grid(row=1, column=1, pady=5)
 
         elif event_type == "Tournament":
-            #Hide all that shit
-            self.location_menu.grid_remove()
-            self.start_hour.grid_remove()
-            self.start_minute.grid_remove()
-            self.duration_spinbox.grid_remove()
-            for label in [self.root.grid_slaves(row=1, column=0),
-                          self.root.grid_slaves(row=2, column=0),
-                          self.root.grid_slaves(row=3, column=0)]:
-                if label:
-                    label[0].grid_remove()
+            ttk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, sticky="w", pady=5)
+            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", height=5)
+            self.teams_listbox.grid(row=0, column=1, pady=5)
+            for team in ["Team A", "Team B", "Team C", "Team D"]:
+                self.teams_listbox.insert("end", team)
 
-            # Teams selection
-            tk.Label(self.dynamic_frame, text="Teams:").grid(row=0, column=0, padx=5, pady=5)
-            self.teams_listbox = tk.Listbox(self.dynamic_frame, selectmode="multiple", exportselection=False, height=10)
-            for faculty in FACULTIES:
-                self.teams_listbox.insert("end", faculty)
-            self.teams_listbox.grid(row=0, column=1, padx=5, pady=5)
-
-            # Tournament format
-            tk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, padx=5, pady=5)
+            ttk.Label(self.dynamic_frame, text="Format:").grid(row=1, column=0, sticky="w", pady=5)
             self.format_var = tk.StringVar(value="Knockout")
-            self.format_menu = tk.OptionMenu(self.dynamic_frame, self.format_var, *FORMAT)
-            self.format_menu.grid(row=1, column=1, padx=5, pady=5)
+            self.format_menu = ttk.Combobox(self.dynamic_frame, textvariable=self.format_var,
+                                            values=["Knockout", "Round-Robin"], state="readonly")
+            self.format_menu.grid(row=1, column=1, pady=5)
 
-            # Days selection frame
-            days_frame = tk.Frame(self.dynamic_frame)
-            days_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+            ttk.Label(self.dynamic_frame, text="Specific Days:").grid(row=2, column=0, sticky="w", pady=5)
+            self.calendar = Calendar(self.dynamic_frame, selectmode="day", date_pattern="yyyy-mm-dd")
+            self.calendar.grid(row=2, column=1, pady=5)
 
-            # Calendar for date selection
-            from tkcalendar import Calendar
-            self.tournament_calendar = Calendar(
-                days_frame,
-                selectmode='day',
-                date_pattern='yyyy-mm-dd'
-            )
-            self.tournament_calendar.pack(side=tk.LEFT, padx=5, pady=5)
-
-            # Selected dates listbox
-            self.selected_dates = []
-            self.dates_listbox = tk.Listbox(days_frame, height=10, width=30)
-            self.dates_listbox.pack(side=tk.LEFT, padx=5, pady=5)
-
-            # Add/Remove date buttons
-            buttons_frame = tk.Frame(days_frame)
-            buttons_frame.pack(side=tk.LEFT, padx=5, pady=5)
-
-            tk.Button(buttons_frame, text="Add Date", command=self.add_tournament_date).pack(pady=2)
-            tk.Button(buttons_frame, text="Remove Date", command=self.remove_tournament_date).pack(pady=2)
-
+        elif event_type == "Training":
+            ttk.Label(self.dynamic_frame, text="Coach Name:").grid(row=0, column=0, sticky="w", pady=5)
+            self.coach_entry = ttk.Entry(self.dynamic_frame, width=30)
+            self.coach_entry.grid(row=0, column=1, pady=5)
 
     def add_tournament_date(self):
         selected_date = self.tournament_calendar.get_date()
@@ -216,65 +187,29 @@ class EventCreationGUI:
             duration = int(self.duration_spinbox.get())
 
             # Use the selected date (passed during initialization)
-            selected_date = self.selected_date  # Ensure this is passed when initializing EventCreationGUI
+            selected_date = self.selected_date
             start_datetime = datetime.combine(selected_date, datetime.min.time()).replace(
                 hour=start_hour, minute=start_minute
             )
             end_datetime = start_datetime + timedelta(minutes=duration)
 
-            # Check if the event is in the past
-            if start_datetime < datetime.now():
-                messagebox.showerror("Error", "The event cannot be created in the past.")
-                return
-
-
             # Collect dynamic fields based on event type
             if event_type == "Friendly":
-                # Use the Listbox to get selected teams
                 selected_indices = self.teams_listbox.curselection()
                 teams = [FACULTIES[i] for i in selected_indices]
-
-                if len(teams) < 2:
-                    messagebox.showerror("Error", "You must select at least two teams.")
-                    return
-
                 event = FriendlyMatch(name, start_datetime, location, sport, teams)
-                event.end = start_datetime + timedelta(minutes=int(self.duration_spinbox.get()))
 
             elif event_type == "Official":
                 referee = {"level": self.referee_entry.get()}
                 commentators = [c.strip() for c in self.commentators_entry.get().split(",")]
-                event = OfficialMatch(name, start_datetime, location, referee, commentators)
+                event = OfficialMatch(name, start_datetime, location, sport, referee, commentators)
 
             elif event_type == "Tournament":
-                # Get selected teams
                 selected_indices = self.teams_listbox.curselection()
-                if not selected_indices:
-                    messagebox.showerror("Error", "Please select teams for the tournament")
-                    return
                 teams = [self.teams_listbox.get(i) for i in selected_indices]
-
-                # Get tournament format
                 format = self.format_var.get().lower()
-
-                # Get selected days
-                if not self.selected_dates:
-                    messagebox.showerror("Error", "Please select tournament days")
-                    return
-
-                # Convert string dates to datetime objects
                 specific_days = [datetime.strptime(date, '%Y-%m-%d') for date in self.selected_dates]
-
-                # Create tournament
-                event = Tournament(
-                    name=name,
-                    date=start_datetime,
-                    location=location,
-                    sport=sport,
-                    teams=teams,
-                    format=format,
-                    specific_days=specific_days
-                )
+                event = Tournament(name, start_datetime, location, sport, teams, format, specific_days)
 
             elif event_type == "Training":
                 coach = self.coach_entry.get()
@@ -283,58 +218,62 @@ class EventCreationGUI:
             else:
                 raise ValueError("Invalid event type.")
 
-
+            # Load resources
             events_file_path = 'events.json'
             data_file_path = 'data.json'
 
-            # Load available resources and staff
             with open(data_file_path, 'r') as file:
                 data = json.load(file)
 
-
             available_items = {item['type']: item['total_quantity'] for item in data['items']}
             available_staff = {staff['role']: staff['availability'] for staff in data['staff']}
-            inventory = data
 
-            # Validate items and staff using the Event class method
             try:
-                validate_items(FriendlyMatch.REQUIRED_ITEMS, available_items)
-                # Validate staff
-                validate_staff(FriendlyMatch.REQUIRED_STAFF, available_staff, inventory)
+                with open(events_file_path, 'r') as file:
+                    events_data = json.load(file)
+                    existing_events = [
+                        globals()[event_type].from_dict(event_dict)
+                        for event_dict in events_data.get(event_type, [])
+                    ]
+            except FileNotFoundError:
+                existing_events = []
 
-                # Load existing events
-                try:
-                    with open(events_file_path, 'r') as file:
-                        events_data = json.load(file)
-                        existing_events = []
+            # Delegate validation to the centralized function
+            try:
+                validate_event(event, available_items, available_staff, existing_events)
 
-                        for event_dict in events_data.get("Friendly", []):
-                            existing_events.append(FriendlyMatch.from_dict(event_dict))
-
-                        validate_no_overlap(event, existing_events)
-                except FileNotFoundError:
-                    events_data = {}
-
-                 # Ensure the event type exists in the dictionary
+                # Save the event
                 if event_type not in events_data:
                     events_data[event_type] = []
-
-
-
-                # Add the new event to the appropriate category
                 events_data[event_type].append(event.to_dict())
 
-                # Save the updated events data
                 with open(events_file_path, 'w') as file:
                     json.dump(events_data, file, indent=4)
 
                 messagebox.showinfo("Success", "Event saved successfully!")
                 self.root.destroy()
 
-                print(events_file_path)
-
             except ValueError as e:
                 messagebox.showerror("Error", f"Validation failed: {e}")
 
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {e}")
+
+def adjust_time(self):
+    """Adjust time to handle hour wrapping and minute overflow."""
+    hour = int(self.start_hour.get())
+    minute = int(self.start_minute.get())
+
+        # Handle minute overflow
+    if minute >= 60:
+        minute = 0
+        hour += 1
+    # Wrap hour back to 7 AM if it exceeds 6 PM
+    if hour > 18:
+        hour = 7
+
+        # Update the Spinbox values
+    self.start_hour.delete(0, "end")
+    self.start_hour.insert(0, hour)
+    self.start_minute.delete(0, "end")
+    self.start_minute.insert(0, minute)
