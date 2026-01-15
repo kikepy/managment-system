@@ -87,6 +87,13 @@ class EventCreationGUI:
         self.common_frame = ttk.LabelFrame(form_frame, text="Common Details", padding=10)
         self.common_frame.grid(row=6, column=0, columnspan=2, pady=10, sticky="ew")
 
+        ttk.Label(self.common_frame, text="Sport:").grid(row=2, column=0, sticky="w", pady=5)
+        self.sport_var = tk.StringVar(value="Football")  # Default value
+        self.sport_menu = ttk.Combobox(self.common_frame, textvariable=self.sport_var,
+                                       values=["Football", "Basketball", "Volleyball"],
+                                       state="readonly")
+        self.sport_menu.grid(row=2, column=1, pady=5)
+
         # Add the Teams Listbox to the common_frame
         ttk.Label(self.common_frame, text="Participating Teams:").grid(row=0, column=0, sticky="w", pady=5)
         self.teams_listbox = tk.Listbox(self.common_frame, selectmode="multiple", height=6)
