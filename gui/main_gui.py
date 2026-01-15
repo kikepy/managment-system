@@ -1,6 +1,7 @@
 ﻿import tkinter as tk
-
-from select import select
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from gui.eventcreation_gui import EventCreationGUI
 from gui.item_gui import ItemGUI
