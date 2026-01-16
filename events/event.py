@@ -39,7 +39,6 @@ class Event:
         sport_durations = {
             "soccer": 90,
             "basketball": 48,
-            "tennis": 120,
             "volleyball": 60,
         }
         return sport_durations.get(sport.lower(), 0)
@@ -51,12 +50,10 @@ class Event:
         return {
             "name": self.name,
             "start": self.start.isoformat(),
-            "location": self.location,  # Ensure this is the stadium name
+            "end": self.end.isoformat(),
+            "location": self.location,
             "sport": self.sport,
             "event_type": self.event_type,
-            "end": self.end.isoformat(),
-            "required_items": self.required_items.get(self.sport.lower(), {}),  # Populate required items
-            "required_staff": self.required_staff.get(self.event_type, {}),
         }
 
     @classmethod

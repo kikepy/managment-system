@@ -4,10 +4,11 @@ from datetime import datetime
 import json
 
 class EventSelectorGUI:
-    def __init__(self, root, events):
+    def __init__(self, root, events, events_file_path):
         self.root = root
         self.root.title("Event Selector")
         self.events = events
+        self.events_file_path = events_file_path
 
         # Search Bar
         tk.Label(root, text="Search Events:").pack(pady=5)
@@ -34,52 +35,26 @@ class EventSelectorGUI:
         tk.Button(root, text="Close", command=root.destroy).pack(pady=5)
 
     def populate_tree(self):
-        print("populate_tree called")
-        # Clear existing items
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
         try:
-            with open('events.json', 'r') as file:
+            with open(self.events_file_path, 'r') as file:
                 events_data = json.load(file)
-                print("Loaded events data:", events_data)  # Debugging line
-                print("Event types in data:", events_data.keys())  # Debugging line
+
+            print("Loading events from:", self.events_file_path)
+            print("Events data:", events_data)
 
             for event_type, events in events_data.items():
                 for event in events:
-                    try:
-                        if event_type == "Tournament":
-                            # Process each match in the tournament schedule
-                            for match in event['schedule']:
-                                start_time = datetime.fromisoformat(match['schedule']['start'])
-                                teams = f"{match['teams']['home']} vs {match['teams']['away']}"
-                                self.tree.insert("", "end", values=(
-                                    event_type,
-                                    match['event_info']['name'],
-                                    start_time.strftime('%Y-%m-%d'),
-                                    start_time.strftime('%H:%M'),
-                                    match['schedule'].get('location', 'N/A'),
-                                    teams
-                                ))
-                        else:
-                            # Process non-tournament events
-                            start_time = datetime.fromisoformat(event['schedule']['start'])
-                            teams = f"{event['teams']['home']} vs {event['teams']['away']}" if 'teams' in event else "N/A"
-                            self.tree.insert("", "end", values=(
-                                event_type,
-                                event['event_info']['name'],
-                                start_time.strftime('%Y-%m-%d'),
-                                start_time.strftime('%H:%M'),
-                                event['schedule']['location'],
-                                teams
-                            ))
-                    except Exception as e:
-                        print(f"Error processing event: {event}. Error: {e}")
+                    self.tree.insert('', 'end', values=(
+                        event['event_info']['name'],
+                        event['event_info']['sport'],
+                        event['schedule']['start'],
+                        event['schedule']['end'],
+                        event['schedule']['location']
+                    ))
         except FileNotFoundError:
-            messagebox.showwarning("Warning", "No events found")
-        except Exception as e:
-            print("Error in populate_tree:", e)
-            messagebox.showerror("Error", f"Error loading events: {str(e)}")
+            messagebox.showerror("Error", "Events file not found.")
+        except KeyError as e:
+            messagebox.showerror("Error", f"Invalid event data structure: Missing key {e}")
 
     def filter_events(self, event=None):
         print("filter_events called")
@@ -90,7 +65,7 @@ class EventSelectorGUI:
             self.tree.delete(item)
 
         try:
-            with open('events.json', 'r') as file:
+            with open('../events.json', 'r') as file:
                 events_data = json.load(file)
                 print("Loaded events data:", events_data)
                 print("Event types in data:", events_data.keys())
@@ -174,7 +149,7 @@ class EventSelectorGUI:
             tree.pack(pady=10, fill=tk.BOTH, expand=True)
 
             try:
-                with open('events.json', 'r') as file:
+                with open('../events.json', 'r') as file:
                     events_data = json.load(file)
                     print("Loaded events data:", events_data)  # Debugging line
 

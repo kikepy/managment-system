@@ -1,16 +1,14 @@
 ﻿import tkinter as tk
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from config import data_file_path, events_file_path
 from gui.eventcreation_gui import EventCreationGUI
 from gui.item_gui import ItemGUI
 from gui.staff_gui import StaffGUI
 
-
 class MainGUI:
-    def __init__(self, root):
+    def __init__(self, root, data_file_path, events_file_path):
         self.root = root
+        self.data_file_path = data_file_path
+        self.events_file_path = events_file_path
         self.root.title("Management System")
         self.root.geometry("800x600")
         self.root.resizable(True, True)
@@ -26,29 +24,19 @@ class MainGUI:
 
     def open_item_gui(self):
         item_window = tk.Toplevel(self.root)
-        ItemGUI(item_window)
+        ItemGUI(item_window, self.data_file_path)
 
     def open_staff_gui(self):
         staff_window = tk.Toplevel(self.root)
-        StaffGUI(staff_window)
+        StaffGUI(staff_window, self.data_file_path)
 
     def schedule_events(self):
         event_window = tk.Toplevel(self.root)
-        EventCreationGUI(
-            root=event_window,
-            save_event_callback=None
-        )
+        from gui.eventcreation_gui import EventCreationGUI
+        EventCreationGUI(event_window, self.data_file_path, self.events_file_path)
     def open_event_search(self):
         event_window = tk.Toplevel(self.root)
         from events.scheduling import load_schedule_from_file
         from gui.events_gui import EventSelectorGUI
         events = load_schedule_from_file()
-        EventSelectorGUI(event_window, events)
-
-
-
-# Run the Main GUI
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = MainGUI(root)
-    root.mainloop()
+        EventSelectorGUI(event_window, events, events_file_path)

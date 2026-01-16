@@ -1,14 +1,8 @@
 import tkinter as tk
-import sys
-import os
-
-# Add the root directory to sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Import MainGUI from gui.main_gui
 from gui.main_gui import MainGUI
+from config import data_file_path, events_file_path
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = MainGUI(root)
+    app = MainGUI(root, data_file_path, events_file_path)
     root.mainloop()

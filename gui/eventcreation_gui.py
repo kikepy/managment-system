@@ -5,6 +5,7 @@ from tkcalendar import Calendar
 from datetime import datetime, timedelta
 from events import *
 from events.validation import validate_event
+import os
 
 FACULTIES = [
     "MATCOM", "FHS", "LEX", "EKO",
@@ -18,15 +19,17 @@ FORMAT = [
     "League",
 ]
 class EventCreationGUI:
-    def __init__(self, root, save_event_callback):
+    def __init__(self, root, data_file_path, events_file_path):
         self.root = root
         self.root.title("Create Event")
-        self.save_event_callback = save_event_callback
         self.root.geometry("900x700")
         self.root.resizable(True, True)
         self.root.selected_date = datetime.now().date()  # Default to today's date
         self.root.current_date = datetime.now().date()
         self.selected_dates = []
+        self.data_file_path = data_file_path
+        self.events_file_path = events_file_path
+
 
         self.dynamic_frame = ttk.Frame(root)
         self.dynamic_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -36,6 +39,8 @@ class EventCreationGUI:
         calendar_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ns")
         self.calendar = Calendar(calendar_frame, selectmode="day", date_pattern="yyyy-mm-dd")
         self.calendar.grid(row=0, column=0, pady=5)
+
+        self.calendar.bind("<<CalendarSelected>>", self.update_selected_date)
 
         # Add a Listbox and buttons for managing selected dates
         ttk.Label(self.dynamic_frame, text="Selected Dates:").grid(row=3, column=0, sticky="w", pady=5)
@@ -151,6 +156,12 @@ class EventCreationGUI:
         for date in self.selected_dates:
             self.dates_listbox.insert(tk.END, date)
 
+
+    def update_selected_date(self, event=None):
+        selected_date = self.calendar.get_date()
+        if selected_date:
+            self.root.selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+
     def save_event(self):
         try:
             # Collect common fields
@@ -163,7 +174,7 @@ class EventCreationGUI:
             duration = int(self.duration_spinbox.get())
 
             # Use the selected date (passed during initialization)
-            selected_date = self.selected_date
+            selected_date = self.root.selected_date
             start_datetime = datetime.combine(selected_date, datetime.min.time()).replace(
                 hour=start_hour, minute=start_minute
             )
@@ -194,24 +205,24 @@ class EventCreationGUI:
             else:
                 raise ValueError("Invalid event type.")
 
-            # Load resources
-            events_file_path = 'events.json'
-            data_file_path = 'data.json'
+            event_dict = event.to_dict()
+            print("Event to be saved:", event_dict)
 
-            with open(data_file_path, 'r') as file:
+            # Load resources
+            with open(self.data_file_path, 'r') as file:
                 data = json.load(file)
 
             available_items = {item['type']: item['total_quantity'] for item in data['items']}
             available_staff = {staff['role']: staff['availability'] for staff in data['staff']}
 
             try:
-                with open(events_file_path, 'r') as file:
+                with open(self.events_file_path, 'r') as file:
                     events_data = json.load(file)
                     existing_events = [
-                        globals()[event_type].from_dict(event_dict)
-                        for event_dict in events_data.get(event_type, [])
+                        event for event_list in events_data.values() for event in event_list
                     ]
             except FileNotFoundError:
+                events_data = {}
                 existing_events = []
 
             # Delegate validation to the centralized function
@@ -223,7 +234,7 @@ class EventCreationGUI:
                     events_data[event_type] = []
                 events_data[event_type].append(event.to_dict())
 
-                with open(events_file_path, 'w') as file:
+                with open(self.events_file_path, 'w') as file:
                     json.dump(events_data, file, indent=4)
 
                 messagebox.showinfo("Success", "Event saved successfully!")

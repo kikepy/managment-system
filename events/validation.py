@@ -1,43 +1,54 @@
 ﻿from datetime import datetime
 
+def flatten_tournament_schedules(events):
+    flattened = []
+    for event in events:
+        if event.get("event_info", {}).get("type") == "tournament":
+            flattened.extend(event.get("schedule", []))  # Add all matches in the tournament
+        else:
+            flattened.append(event)  # Add regular events
+    return flattened
+
+def get_attr(event, attr):
+    # Handle dictionaries
+    if isinstance(event, dict):
+        event_type = event.get("event_info", {}).get("type", "").lower()
+        if event_type == "tournament" and attr in ["start", "end", "location"]:
+            raise ValueError(f"Cannot directly access '{attr}' for a tournament. Use nested schedules.")
+        if attr == "event_type":
+            return event.get("event_info", {}).get("type")
+        elif attr == "start":
+            start = event.get("schedule", {}).get("start")
+            return datetime.fromisoformat(start) if start else None
+        elif attr == "end":
+            end = event.get("schedule", {}).get("end")
+            return datetime.fromisoformat(end) if end else None
+        elif attr == "location":
+            return event.get("schedule", {}).get("location")
+        elif attr == "name":
+            return event.get("event_info", {}).get("name")
+
+    # Handle objects
+    return getattr(event, attr, None)
 def validate_no_overlap(new_event, existing_events):
-    # Collect tournament days
-    tournament_days = set()
-    for event in existing_events:
-        if event.event_type == "tournament":
-            # Extract days from the schedule
-            if hasattr(event, 'schedule') and event.schedule:
-                for match in event.schedule:
-                    if isinstance(match, dict) and 'schedule' in match and 'start' in match['schedule']:
-                        match_date = datetime.fromisoformat(match['schedule']['start']).date()
-                        tournament_days.add(match_date)
-            # Extract specific days
-            if hasattr(event, 'specific_days'):
-                for day in event.specific_days:
-                    if isinstance(day, str):
-                        tournament_days.add(datetime.strptime(day, '%Y-%m-%d').date())
-                    else:
-                        tournament_days.add(day.date())
+    # Flatten all tournament schedules
+    all_events = flatten_tournament_schedules(existing_events)
 
-    # Check if the new event falls on a tournament day
-    if new_event.event_type != "tournament":
-        new_event_date = new_event.start.date()
-        if new_event_date in tournament_days:
-            raise ValueError(f"Cannot create event on {new_event_date} as it is reserved for a tournament.")
+    # Check for overlaps
+    for event in all_events:
+        # Handle both objects and dictionaries
+        event_location = event["schedule"]["location"] if isinstance(event, dict) else event.location
+        new_event_location = new_event["schedule"]["location"] if isinstance(new_event, dict) else new_event.location
 
-    # Check for time and location overlap
-    for event in existing_events:
-        if not all(hasattr(event, attr) for attr in ['location', 'start', 'end']):
-            continue  # Skip events missing required attributes
+        if event_location == new_event_location:
+            existing_start = datetime.fromisoformat(event["schedule"]["start"]) if isinstance(event, dict) else event.start
+            existing_end = datetime.fromisoformat(event["schedule"]["end"]) if isinstance(event, dict) else event.end
+            new_start = datetime.fromisoformat(new_event["schedule"]["start"]) if isinstance(new_event, dict) else new_event.start
+            new_end = datetime.fromisoformat(new_event["schedule"]["end"]) if isinstance(new_event, dict) else new_event.end
 
-        if event.location == new_event.location:
-            if not (new_event.end <= event.start or new_event.start >= event.end):
-                raise ValueError(
-                    f"Overlap detected with event '{event.name}' at {event.location} "
-                    f"from {event.start} to {event.end}."
-                )
-
-
+            # Check if the events overlap
+            if not (new_end <= existing_start or new_start >= existing_end):
+                raise ValueError("Event overlaps with an existing event at the same location.")
 
 def validate_date(event_date, event_type):
     try:
@@ -126,7 +137,7 @@ def validate_staff(required_staff, available_staff, inventory):
             required_items = globals()[role].REQUIRED_ITEMS
             validate_items(required_items, available_items)
 
-def validate_event(event, available_items, available_staff, existing_events):
+def validate_event(event, available_items, available_staff, existing_events, allow_past_events=False):
     """
     Centralized validation function for all event types.
 
@@ -139,32 +150,43 @@ def validate_event(event, available_items, available_staff, existing_events):
     Raises:
         ValueError: If any validation fails.
     """
+
+    inventory = {
+        "items": [{"type": item, "total_quantity": quantity} for item, quantity in available_items.items()],
+        "staff": [{"role": role, "availability": availability} for role, availability in available_staff.items()]
+    }
+
     # Validate required items for the event
     validate_items(event.REQUIRED_ITEMS, available_items)
 
     # Validate required staff for the event
-    validate_staff(event.REQUIRED_STAFF, available_staff)
+    validate_staff(event.REQUIRED_STAFF, available_staff, inventory)
 
     # Validate no overlap with existing events
     validate_no_overlap(event, existing_events)
+    if not allow_past_events:
+        event_start = event.start
+        current_date = datetime.now()
+        if event_start < current_date:
+            raise ValueError("Match date cannot be in the past.")
 
     # Event-specific validations
-    if event.event_type == "Friendly":
+    if event.event_type == "friendly":
         if len(event.teams) != 2:
             raise ValueError("Friendly matches must have exactly two teams.")
-    elif event.event_type == "Official":
+    elif event.event_type == "official":
         if "level" not in event.referee or event.referee["level"] != "high":
             raise ValueError("Official matches require a referee with a 'high' level.")
         if len(event.commentators) < 2:
             raise ValueError("Official matches must have at least two commentators.")
-    elif event.event_type == "Tournament":
+    elif event.event_type == "tournament":
         if len(event.teams) < 4:
             raise ValueError("Tournaments must have at least four teams.")
         if event.format not in ["knockout", "round-robin", "mixed"]:
             raise ValueError("Invalid tournament format. Must be 'knockout', 'round-robin', or 'mixed'.")
         if not event.specific_days:
             raise ValueError("Tournaments must have specific days defined.")
-    elif event.event_type == "Training":
+    elif event.event_type == "training":
         if not event.coach:
             raise ValueError("Training events must have a coach assigned.")
     else:
