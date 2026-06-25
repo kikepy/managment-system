@@ -81,8 +81,5 @@ All the data is stored in a JSON file named `data.json`. The structure of the JS
 }
 ```
 
-## License
-This project is licensed under the MIT License.
-
 ---
 Made with ❤️ by [kikepy](https://github.com/kikepy)
